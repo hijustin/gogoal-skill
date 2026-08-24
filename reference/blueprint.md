@@ -2,7 +2,7 @@
 
 > 文档类型：产品与技术开发蓝图
 > 当前状态：核心方案、Markdown 文档规范与看板页面原型均已收敛
-> 最后整理日期：2026-08-23
+> 最后整理日期：2026-08-25
 > 项目名称：GoGoal
 > 产品、Skill、Plugin、CLI 及项目数据目录标识：`gogoal`
 > GitHub 仓库：`gogoal-skill`
@@ -31,7 +31,7 @@
 16. [看板技术架构](#16-看板技术架构)
 17. [Skill 与开源仓库结构](#17-skill-与开源仓库结构)
 18. [测试与质量保障](#18-测试与质量保障)
-19. [开发阶段规划](#19-开发阶段规划)
+19. [开发实施顺序](#19-开发实施顺序)
 
 ## 1. 产品定义
 
@@ -52,7 +52,7 @@ GoGoal 不是独立于项目之外的通用项目管理平台。目标、任务�
 
 ### 1.3 产品边界
 
-GoGoal 第一阶段不包含：
+GoGoal 当前范围不包含：
 
 - 中央数据库、网络数据库或云端多租户服务。
 - 独立账号、组织、成员和权限系统。
@@ -62,6 +62,7 @@ GoGoal 第一阶段不包含：
 - 旧版 Markdown 表格格式的自动导入器。
 - 强制性的验证附件或 `evidence/` 目录。
 - 结构化验收标准及其自动覆盖率计算。
+- 可部署到 GitHub Pages 或其他环境的静态看板导出。
 
 ### 1.4 启用条件
 
@@ -118,7 +119,7 @@ GoGoal Skill
              ↓
         项目内 gogoal/ 数据
              ↓
-        Git 审计与只读看板
+        可选 Git 审计与只读看板
 ```
 
 ### 3.2 组件职责
@@ -134,7 +135,7 @@ GoGoal Skill
 | 四个聚合 JSON | 保存目标与任务的当前或归档状态，是结构化状态事实源。 |
 | 目标和任务 Markdown | 保存详细分析、计划、实施、验证和交付材料。 |
 | `log.json` | 保存 CLI 自动追加的业务管理时间线。 |
-| Git | 保存实际文件差异、实现提交、管理提交和历史恢复依据。 |
+| Git | 可用且启用时保存实际文件差异、实现提交、管理提交和历史恢复依据。 |
 | 看板 | 只读展示 JSON、日志、Markdown 和可选 Git 信息。 |
 
 ### 3.3 数据权威关系
@@ -195,6 +196,7 @@ GoGoal 包含三类业务对象：
 15. **敏感信息禁止入库**：JSON、Markdown、日志和 Git 提交不得保存密码、密钥、令牌、个人敏感信息或生产隐私数据。
 16. **主 AI 统一管理**：目标和任务的生命周期、结构化数据、日志及 Markdown 只能由主 AI 统一维护；子代理只负责被派发 AI 任务的实施与任务级验证。
 17. **自适应执行**：主 AI 根据依赖、改动范围、环境、运行时能力和冲突风险选择顺序执行、工作树、子代理或混合方式，并遵守项目配置的最大并行任务数。
+18. **运行环境分层**：适合随 Skill 分发的脚本、跨平台库和前端资源一并打包；Python 解释器、Git 和浏览器等系统能力由用户环境提供，并在使用前执行能力检测。
 
 ## 5. 状态模型
 
@@ -272,6 +274,57 @@ pending / active / blocked → cancelled
 - 归档通过从活动 JSON 迁移到归档 JSON 表达。
 - 详情 Markdown 永久保留原路径，不移动、不删除。
 
+### 5.5 CLI 状态迁移与副作用矩阵
+
+Skill 与 CLI 必须共同遵守以下矩阵。CLI 负责校验状态、字段、关联、容量和数据一致性等确定性条件；主 AI 负责判断用户授权、实际结果、目标边界和验证是否成立等语义条件。任一层不满足都不得执行或宣称迁移成功。表中的“源状态”只指活动 JSON 中对象的状态；归档对象和不在允许源状态中的对象一律拒绝修改。
+
+#### 目标命令
+
+| 命令 | 允许源状态 | 目标状态 | 字段及关联副作用 | 主要失败条件 |
+| --- | --- | --- | --- | --- |
+| `goal create` | 不适用 | `pending` | 分配永久编号和 `recordedAt`，生成稳定 `document` 路径，`endedAt` 与 `blocker` 为 `null`。 | 参数非法、数据损坏、加锁或写入失败。 |
+| `goal update` | `pending`、`active`、`blocked`、`review` | 保持不变 | 更新标题和/或描述；编号、`recordedAt` 和文档路径不变。 | 对象已终态或归档、没有可更新字段、字段非法。 |
+| `goal start` | `pending` | `active` | 保持 `endedAt` 与 `blocker` 为 `null`。 | 未获得用户启动授权、源状态不符、文档或数据校验失败。 |
+| `goal block` | `active` | `blocked` | 写入非空 `blocker.reason` 和 `blocker.condition`。 | 仍有关联 `active` AI 任务；存在可继续执行路径；阻塞参数为空。 |
+| `goal resume` | `blocked` | `active` | 清空当前 `blocker`。 | 解除条件未满足或源状态不符。 |
+| `goal submit` | `active` | `review` | 保持 `endedAt` 与 `blocker` 为 `null`。 | 关联任务仍为非终态、必要结果或验证未完成、存在阻塞摘要。 |
+| `goal revise` | `review` | `active` | 保持 `endedAt` 与 `blocker` 为 `null`。 | 未收到范围内验收修改或源状态不符。 |
+| `goal complete` | `review` | `completed` | 使用设备本地时间写入 `endedAt`，`blocker` 为 `null`。 | 未获得用户验收通过、关联数据不一致或源状态不符。 |
+| `goal cancel` | `pending`、`active`、`blocked`、`review` | `cancelled` | 写入 `endedAt`、清空 `blocker`；级联取消全部非终态关联任务并分别写入结束字段和日志，用户任务 `result` 使用非空目标取消原因。 | 未获得用户取消要求、取消原因为空、级联对象无法一致写入。 |
+| `goal archive` | `completed`、`cancelled` | 保持终态 | 写入 `archivedAt`，将目标及仍在活动区的关联终态任务迁移到归档 JSON，Markdown 保持原路径。 | 存在非终态关联任务、对象已经归档、迁移后发生重复或缺失。 |
+
+#### AI 任务命令
+
+| 命令 | 允许源状态 | 目标状态 | 字段及关联副作用 | 主要失败条件 |
+| --- | --- | --- | --- | --- |
+| `task create --type ai` | 不适用 | `pending` | 只允许关联 `active` 目标；分配 AI 任务永久编号和 `recordedAt`，生成稳定 `document` 路径。 | 目标不存在、不是 `active` 或已归档；参数、数据或写入非法。 |
+| `task update --type ai` | `pending`、`active`、`blocked` | 保持不变 | 更新标题和/或描述；编号、关联目标、`recordedAt` 和文档路径不变。 | 任务已终态或归档、没有可更新字段、字段非法。 |
+| `task start --type ai` | `pending` | `active` | 占用一个有效并行名额。 | 关联目标不是 `active`、存在未完成依赖、达到有效并行上限。 |
+| `task block --type ai` | `active` | `blocked` | 写入非空 `blocker` 并释放有效并行名额。 | 阻塞参数为空、仍可在任务边界内继续或源状态不符。 |
+| `task resume --type ai` | `blocked` | `active` | 清空 `blocker`；恢复可造成非抢占式临时超额。 | 关联目标不是 `active`、解除条件未满足或源状态不符。 |
+| `task complete --type ai` | `active` | `completed` | 使用设备本地时间写入 `endedAt`，`blocker` 为 `null`，释放并行名额。 | 未达到对应 Git 模式的完成门槛、验证失败或源状态不符。 |
+| `task cancel --type ai` | `pending`、`active`、`blocked` | `cancelled` | 写入 `endedAt`、清空 `blocker`，处于 `active` 时释放并行名额。 | 取消原因为空、任务仍应在原边界内继续或源状态不符。 |
+| `task archive --type ai` | `completed`、`cancelled` | 保持终态 | 写入 `archivedAt` 并迁移到归档 JSON，Markdown 保持原路径。 | 对象非终态、已经归档或迁移不一致。 |
+
+#### 用户任务命令
+
+| 命令 | 允许源状态 | 目标状态 | 字段及关联副作用 | 主要失败条件 |
+| --- | --- | --- | --- | --- |
+| `task create --type user` | 不适用 | `pending` | 只允许关联 `active` 目标；分配用户任务永久编号和 `recordedAt`，`result` 与 `endedAt` 为 `null`。 | 目标不存在、不是 `active` 或已归档；`kind` 或其他参数非法。 |
+| `task update --type user` | `pending` | 保持不变 | 更新标题和/或描述；编号、关联目标、`kind` 和 `recordedAt` 不变。 | 任务已终态或归档、没有可更新字段、字段非法。 |
+| `task complete --type user` | `pending` | `completed` | 保存非空 `result`，使用设备本地时间写入 `endedAt`。 | `result` 为空或源状态不符。 |
+| `task cancel --type user` | `pending` | `cancelled` | 保存非空取消原因到 `result`，使用设备本地时间写入 `endedAt`。 | `result` 为空或源状态不符。 |
+| `task archive --type user` | `completed`、`cancelled` | 保持终态 | 写入 `archivedAt` 并迁移到归档 JSON。 | 对象非终态、已经归档或迁移不一致。 |
+
+全部修改命令还必须满足以下共同不变量：
+
+- `blocker` 当且仅当对象状态为 `blocked` 时非空。
+- `endedAt` 当且仅当对象状态为 `completed` 或 `cancelled` 时非空。
+- `archivedAt` 只存在于归档 JSON 的记录中。
+- 用户任务进入任何终态时 `result` 必须非空。
+- 目标进入 `blocked` 前，全部关联 `active` AI 任务必须先完成或进入 `blocked`；不得仅为满足目标阻塞条件而取消仍应继续的任务。`pending` 任务可以保留，但必须确认当前不存在可启动的执行路径。
+- 所有修改在同一文件锁和事务边界内完成结构化数据、级联对象及 `log.json` 更新；任一步失败不得留下部分状态。
+
 ## 6. 目标与任务工作流
 
 ### 6.1 项目初始化
@@ -303,7 +356,7 @@ pending / active / blocked → cancelled
 3. 调用 `gogoal goal start <id>` 将目标从 `pending` 改为 `active`。
 4. 根据任务规划登记初始 AI 任务和用户任务。
 5. AI 读取 `gogoal/task-writing.md`，为每个 AI 任务创建稳定路径的任务 Markdown；用户任务不创建详情文档，其交付或决定在结构化任务结果和目标“任务规划与执行”中表达。
-6. 校验并创建相应管理提交。
+6. 校验，并在 Git 可用且 `git.autoCommit=true` 时由主 AI 创建相应管理提交。
 7. 进入目标范围内的自主执行循环。
 
 目标启动不扩大宿主环境权限，也不授权高风险外部操作。
@@ -320,12 +373,14 @@ pending / active / blocked → cancelled
 → 主 AI 或子代理在当前工作树或隔离工作树中实施并验证
 → 主 AI 审查、合入并执行组合验证
 → 主 AI 完成、阻塞或取消任务
-→ 校验并提交对应变更
+→ 校验，并按 Git 配置由主 AI 提交对应变更
 → 继续调度后续任务
 → 必要任务全部结束后提交目标待验收
 ```
 
 默认采用顺序实施。任务相互独立、改动可隔离、验证环境互不干扰且运行时资源允许时，主 AI 可以在 `execution.maxParallelTasks` 上限内并行实施多个 AI 任务。最大并行任务数是准入上限，不是必须达到的目标值；主 AI 可以主动选择更低并行度或完全不使用子代理。
+
+只有 Git 可用、当前目录是 Git 仓库且 `git.enabled=true` 时，GoGoal 才允许利用分支和工作树进行隔离并行。Git 不可用或关闭时默认顺序执行，有效最大并行任务数固定为 `1`；原配置值保留但不作为并行准入值。
 
 主 AI 可以选择以下执行方式：
 
@@ -409,7 +464,7 @@ AI 应先按 `goal-writing.md` 完整填写“交付与验收”，再调用 `go
 2. 确认交付和任务记录完整。
 3. 调用 `gogoal goal complete <id>`。
 4. CLI 将状态从 `review` 改为 `completed` 并填写 `endedAt`。
-5. 校验并创建目标完成提交。
+5. 校验，并在 Git 可用且 `git.autoCommit=true` 时由主 AI 创建目标完成提交。
 
 AI 的自行验证不能替代用户验收。
 
@@ -477,7 +532,9 @@ AI 的自行验证不能替代用户验收。
 - JSON 文件使用 UTF-8 编码和稳定格式化风格。
 - 尚未发生或不适用的 JSON 值使用真正的 `null`，不得写为字符串 `"—"`。
 - CLI 和看板在面向用户展示时可将 `null` 映射为 `—`。
-- 时间统一使用 `config.json` 中的时区，格式为 `YYYY-MM-DD HH:mm`。
+- 时间直接使用动作发生时的设备本地时间，格式为 `YYYY-MM-DD HH:mm`，不保存 UTC 偏移或独立时区字段。
+- 设备时区或系统时钟发生变化时，历史时间保持原值，不转换、不重写；新记录继续使用动作发生时的设备时间。
+- 设备时间可能回拨或跳变，日志顺序以日志编号和数组追加顺序为准，不以时间字符串作为唯一排序依据。
 - `recordedAt` 在首次登记时生成，之后保持不变。
 - `endedAt` 只在进入 `completed` 或 `cancelled` 时生成。
 - `archivedAt` 只在执行归档时生成。
@@ -495,21 +552,20 @@ AI 的自行验证不能替代用户验收。
 | `format` | `1` | 数据格式版本；CLI 据此判断当前数据是否兼容。 |
 | `project` | 当前项目目录名 | 看板显示的项目名称。 |
 | `locale` | `"zh-CN"` | CLI、看板以及初始化默认写作指南的语言；当前只允许 `zh-CN` 或 `en-US`。 |
-| `timezone` | `"Asia/Shanghai"` | 目标、任务和日志使用的时区。 |
 | `execution.maxParallelTasks` | `2` | 允许同时处于 `active` 的 AI 任务上限；限制新任务的并行准入，不要求主 AI 必须并行或使用子代理。 |
 | `git.enabled` | `true` | Git 集成总开关；控制状态检查、分支和工作树辅助、自动本地提交及补充审计信息。 |
-| `git.autoCommit` | `true` | Git 集成启用时，是否由 Skill 在完整管理动作或已验证实现节点按提交边界自动创建本地提交。 |
+| `git.autoCommit` | `true` | Git 集成启用时，是否允许主 AI 在完整管理动作或已验证实现节点按提交边界自动创建本地提交；CLI 本身永不创建提交。 |
 | `git.branchPrefix` | `"gogoal/"` | 需要任务隔离分支时使用的默认分支前缀。 |
 | `git.worktreeRoot` | `"../.gogoal-worktrees"` | GoGoal 任务工作树的统一根目录，相对于主仓库根目录解析。 |
 | `dashboard.host` | `"127.0.0.1"` | 本地只读看板监听地址，默认仅本机可访问。 |
 | `dashboard.port` | `4173` | 本地看板监听端口。 |
 | `dashboard.refreshSeconds` | `180` | 页面重新获取最新数据的间隔秒数。 |
 | `dashboard.autoOpen` | `false` | 启动服务后是否尝试自动打开浏览器。 |
-| `dashboard.gitActivity` | `true` | 是否在看板中补充展示匹配管理提交格式的 Git 信息。 |
+| `dashboard.gitActivity` | `true` | 是否在看板中补充展示匹配 GoGoal 提交格式的管理与实现活动。 |
 
-`execution.maxParallelTasks` 必须是大于或等于 `1` 的整数。它统计全部 `active` AI 任务，不区分任务由主 AI 还是子代理实施；`pending`、`blocked`、`completed`、`cancelled` AI 任务、全部用户任务和目标均不计入。配置值和运行时能力只定义上限，实际并行度由主 AI 根据任务条件决定。
+`execution.maxParallelTasks` 必须是大于或等于 `1` 的整数。它统计全部 `active` AI 任务，不区分任务由主 AI 还是子代理实施；`pending`、`blocked`、`completed`、`cancelled` AI 任务、全部用户任务和目标均不计入。配置值和运行时能力只定义上限，实际并行度由主 AI 根据任务条件决定。Git 不可用、当前目录不是 Git 仓库或 `git.enabled=false` 时，有效最大并行任务数固定为 `1`，不创建任务分支或工作树，也不因配置值更大而并行执行。
 
-`git.enabled` 为 `false` 时，GoGoal 不执行 Git 状态检查、分支与工作树辅助或自动提交，`git.autoCommit`、`git.branchPrefix`、`git.worktreeRoot` 和 `dashboard.gitActivity` 对 GoGoal 均不生效，但目标任务管理、日志和看板基础数据仍然可用。`git.autoCommit` 只允许 Skill 在文档、CLI 修改和校验构成的完整管理动作结束后，或任务实现通过对应验证后，创建符合提交边界的本地提交；CLI 修改命令不得在 Markdown 尚未同步时提前提交。该配置不授权推送、创建 Pull Request、改写远程历史或发布。
+`git.enabled` 为 `false` 时，GoGoal 不执行 Git 状态检查、分支与工作树辅助或自动提交，`git.autoCommit`、`git.branchPrefix`、`git.worktreeRoot` 和 `dashboard.gitActivity` 对 GoGoal 均不生效，但目标任务管理、日志和看板基础数据仍然可用。`git.autoCommit` 只允许主 AI 在文档、CLI 修改和校验构成的完整管理动作结束后，或任务实现通过对应验证后，创建符合提交边界的本地提交；提交范围可以是 `gogoal/` 管理变更，也可以是任务实现变更，但不得混入目标或任务范围外的用户改动。CLI 永不执行 `git commit`。该配置不授权推送、创建 Pull Request、改写远程历史或发布。
 
 `git.branchPrefix` 配置为 `gogoal` 时，CLI 应自动规范化为 `gogoal/`。该配置只用于确实需要独立分支的任务，不代表每个任务都强制创建分支。`git.worktreeRoot` 默认位于项目仓库之外；实现应在其下追加规范化的仓库目录名和任务目录名，不能把任务工作树静默创建在主仓库内部。默认目录不可写时应提示用户修改配置。
 
@@ -531,7 +587,6 @@ AI 的自行验证不能替代用户验收。
   "format": 1,
   "project": "gogoal",
   "locale": "zh-CN",
-  "timezone": "Asia/Shanghai",
   "execution": {
     "maxParallelTasks": 2
   },
@@ -1080,14 +1135,14 @@ AI 按需读取指南：处理目标文档时只读取 `goal-writing.md`，处�
 | AI 任务阻塞、恢复或取消 | 先追加对应异常记录，再执行对应 CLI。 |
 | AI 任务归档 | 通常不修改任务文档，由 JSON 和日志记录归档。 |
 
-准备文档、执行 CLI、校验和创建管理提交构成一个完整管理动作。任一步失败都不得声称动作已经完成；CLI 失败时，文档不得继续声称对应状态迁移已经成功。
+准备文档、执行 CLI、校验以及按配置创建管理提交构成一个完整管理动作。任一步失败都不得声称动作已经完成；CLI 失败时，文档不得继续声称对应状态迁移已经成功。`git.autoCommit=false` 或 Git 不可用时，不创建提交不影响管理动作成立，但文档、CLI 修改和校验仍必须全部成功。
 
 ## 13. CLI 设计
 
 ### 13.1 总体原则
 
 - 文档中的逻辑命令统一写为 `gogoal`。
-- Skill 可以通过 `python3 <skill目录>/scripts/gogoal.py` 执行，无需用户额外全局安装 CLI。
+- Skill 通过检测到的 Python 3.12 或更高版本解释器执行 `<skill目录>/scripts/gogoal.py`，无需用户额外全局安装 CLI 命令；解释器本身由用户环境提供。
 - AI 不直接读取或写入结构化 JSON，只通过 CLI 查询和修改。
 - 查询命令默认输出紧凑文本，减少 AI 上下文占用。
 - 查询命令支持 `--json` 时输出稳定 JSON，供看板或其他程序使用。
@@ -1095,7 +1150,7 @@ AI 按需读取指南：处理目标文档时只读取 `goal-writing.md`，处�
 - `config set` 只修改项目配置，不属于目标或任务业务动作，因此不追加 `log.json`。
 - CLI 不接受也不记录动作来源，不提供 `--actor` 参数。
 - CLI 不编写目标和任务 Markdown 正文；仅在初始化时复制默认写作指南。
-- Git 集成启用且 `git.autoCommit=true` 时，Skill 在完整管理动作通过校验后按第 15 章提交边界创建本地管理提交；CLI 修改命令本身不在 Markdown 尚未同步时提前提交。任何配置都不授权自动推送、创建 Pull Request、改写远程历史或执行外部发布。
+- CLI 永不执行 `git commit`。Git 集成启用且 `git.autoCommit=true` 时，主 AI 可以在完整管理动作或任务实现节点通过对应校验后，按第 15 章提交边界创建本地提交；`false` 时主 AI 不得自主提交，除非用户当次明确要求。任何配置都不授权自动推送、创建 Pull Request、改写远程历史或执行外部发布。
 
 ### 13.2 初始化与配置命令
 
@@ -1168,7 +1223,7 @@ AI 任务和用户任务分别独立编号，因此操作单个任务时必须�
 | `gogoal task list --archive` | 只列出归档任务。 |
 | `gogoal task show 2 --type ai` | 返回 AI 任务 2 的基础信息和文档路径。 |
 | `gogoal task show 2 --type user` | 返回用户任务 2 的基础信息和结果。 |
-| `gogoal task capacity` | 显示最大并行任务数、当前 `active` AI 任务数、剩余新任务名额和阻塞任务数，供主 AI 调度前查询。 |
+| `gogoal task capacity` | 显示配置上限、当前运行环境的有效上限、当前 `active` AI 任务数、剩余新任务名额和阻塞任务数；Git 不可用或关闭时有效上限固定为 `1`。 |
 
 ### 13.7 任务修改命令
 
@@ -1212,9 +1267,8 @@ AI 任务和用户任务分别独立编号，因此操作单个任务时必须�
 | `gogoal dashboard serve` | 启动本地只读看板服务。 |
 | `gogoal dashboard serve --port 4180` | 临时覆盖监听端口，不修改配置。 |
 | `gogoal dashboard serve --open` | 启动服务后尝试打开浏览器。 |
-| `gogoal dashboard export --output dist/dashboard` | 导出可部署到 GitHub Pages 等环境的静态站点。 |
 
-本地使用只需要 `dashboard serve`，不需要 `dashboard export`。
+GoGoal 不提供看板静态导出或外部部署命令；固定前端资源仅由本地只读服务提供。
 
 ### 13.10 CLI 不负责的事项
 
@@ -1333,8 +1387,9 @@ CLI 不负责：
 
 ### 15.2 Git 配置行为
 
-- `git.enabled=true` 启用 Git 状态检查、分支和工作树辅助、提交建议、自动本地提交以及看板可选 Git 信息；设为 `false` 时 GoGoal 的 Git 集成功能整体降级，但数据和看板基础功能继续工作。
-- `git.autoCommit=true` 允许 Skill 在完整管理动作或已验证实现节点自动创建范围明确的本地提交；设为 `false` 时 CLI 仍返回修改文件和建议提交消息，由用户或主 AI 决定何时提交。
+- GoGoal 使用设备环境中的 `git` 可执行文件并通过 `git --version` 检测能力；没有 Git 或当前目录不是 Git 仓库时，行为等同于 `git.enabled=false`。
+- `git.enabled=true` 启用 Git 状态检查、分支和工作树辅助、提交建议、主 AI 自动本地提交以及看板可选 Git 信息；设为 `false` 时 GoGoal 的 Git 集成功能整体降级，但数据和看板基础功能继续工作，有效最大并行任务数固定为 `1`。
+- CLI 命令不自动创建提交。`git.autoCommit=true` 允许主 AI 在完整管理动作或已验证实现节点自动创建范围明确的本地提交，提交范围不限于 GoGoal 管理文件或任务实现文件；设为 `false` 时主 AI 不得自主提交，除非用户当次明确要求。CLI 始终返回修改文件和建议提交消息。
 - `git.autoCommit` 不改变目标授权、任务完成或高风险操作边界，也不授权推送、创建 Pull Request、发布或修改远程状态。
 - `dashboard.gitActivity=true` 只允许看板读取和展示 Git 活动；它依赖 `git.enabled=true`，不创建任何 Git 变更。
 
@@ -1365,13 +1420,16 @@ CLI 不负责：
 → 确认预定目标分支在验证期间没有失效变化
 → 将已验证结果合入预定目标分支
 → 主 AI 更新任务 Markdown 并调用 task complete
-→ 校验并创建管理提交
+→ 校验，并按配置由主 AI 创建管理提交
 → 安全清理候选环境和任务工作树
 ```
 
 候选合入方式服从项目既有 Git 策略，GoGoal 不强制 merge、rebase、squash 或 cherry-pick。目标分支在验证期间新增了可能影响结果的提交时，必须在最新基线上重新建立候选结果并至少重跑受影响测试；核心或高风险改动重新执行完整回归测试。
 
-AI 任务的完成门槛是实现结果已经进入预定目标分支，并在该组合状态下通过所有当时可执行且必要的验证。子代理完成、任务分支提交、任务分支单独测试通过或候选合入建立，均不足以将任务标记为 `completed`。
+AI 任务根据 Git 能力采用两种完成门槛：
+
+- Git 可用、当前目录是 Git 仓库且 `git.enabled=true`：实现结果已经进入预定目标分支，并在该组合状态下通过所有当时可执行且必要的验证。子代理完成、任务分支提交、任务分支单独测试通过或候选合入建立，均不足以将任务标记为 `completed`。
+- Git 不可用、当前目录不是 Git 仓库或 `git.enabled=false`：实现结果已经进入当前项目工作目录，并在该目录中通过所有当时可执行且必要的验证。任务顺序执行，有效最大并行任务数固定为 `1`。
 
 ### 15.5 冲突与测试失败
 
@@ -1387,7 +1445,7 @@ AI 任务的完成门槛是实现结果已经进入预定目标分支，并在�
 
 ### 15.6 提交消息
 
-默认沿用中文管理提交格式：
+默认使用中文 GoGoal 提交格式：
 
 ```text
 目标-操作-编号-标题
@@ -1404,8 +1462,10 @@ AI任务-操作-编号-标题
 AI 任务操作：
 
 ```text
-登记、更新、启动、阻塞、恢复、完成、取消、归档
+登记、更新、启动、实现、阻塞、恢复、完成、取消、归档
 ```
+
+“实现”只用于标识 AI 任务实施过程中通过验证的有意义 Git 提交，不增加 CLI 生命周期命令，也不重复写入 `log.json`。`log.json` 继续记录目标和任务管理动作，Git 历史记录具体实现节点。
 
 用户任务操作：
 
@@ -1432,8 +1492,8 @@ AI 任务操作：
 - 用户继续通过对话操作目标和任务。
 - 本地使用动态只读服务，不将数据嵌入并重复生成 HTML。
 - 页面定时获取最新数据并局部更新，不需要整页刷新。
-- 发布静态站点时才执行导出。
-- 页面布局、组件和核心交互按第 16.6 节的定稿要求实现。
+- 不提供静态页面导出或外部站点部署功能。
+- 页面布局、组件和核心交互按第 16.5 节的定稿要求实现。
 
 ### 16.2 本地运行
 
@@ -1470,7 +1530,7 @@ http://127.0.0.1:4173
 | 获取任务列表 | 返回活动或归档 AI 任务和用户任务。 |
 | 获取 AI 任务详情 | 返回任务基础数据和任务 Markdown。 |
 | 获取日志 | 支持按目标、对象、动作和数量筛选时间线。 |
-| 获取可选 Git 信息 | 返回当前分支、工作树摘要和匹配的管理提交。 |
+| 获取可选 Git 信息 | 返回当前分支、工作树摘要和匹配 GoGoal 格式的管理与实现提交。 |
 
 不提供任何 `POST`、`PUT`、`PATCH` 或 `DELETE` 写接口。
 
@@ -1483,36 +1543,11 @@ http://127.0.0.1:4173
 - API 不返回敏感环境变量或 Git 凭据。
 - 监听非本机地址应要求用户明确配置和确认。
 
-### 16.5 静态导出
-
-```bash
-gogoal dashboard export --output dist/dashboard
-```
-
-建议输出结构：
-
-```text
-dist/dashboard/
-├── index.html
-├── assets/
-├── data/
-│   ├── target.json
-│   ├── target-archive.json
-│   ├── task.json
-│   ├── task-archive.json
-│   └── log.json
-└── documents/
-    ├── targets/
-    └── tasks/
-```
-
-静态页面通过相对 URL 读取导出数据。源项目数据变化后需要重新导出和部署。公开发布前必须提醒用户检查数据和 Markdown 是否包含不应公开的信息。
-
-### 16.6 页面原型定稿要求
+### 16.5 页面原型定稿要求
 
 `reference/prototype/` 是看板交互原型，用于约束当前看板的信息架构、视觉关系、密度和交互。原型中的模拟数据、Vinext 工程结构和演示性实现不直接构成正式运行时要求；开发时可以抽取为更轻量的固定前端资源，但不得无理由改变本节规定的产品行为。
 
-#### 16.6.1 页面骨架与区域比例
+#### 16.5.1 页面骨架与区域比例
 
 - 看板为桌面优先的单页面应用，占满整个视口，页面本身不产生纵向滚动；目标列表、各任务状态列、时间线和文档阅读区按需独立滚动。
 - 页面最小可用宽度为 `980px`。低于该宽度时允许产生整体横向可视限制，当前范围不要求重排成移动端卡片流。
@@ -1524,16 +1559,16 @@ dist/dashboard/
 - AI 任务区固定划分五列，依次为 `pending`、`active`、`blocked`、`completed`、`cancelled`；用户任务区固定划分三列，依次为 `pending`、`completed`、`cancelled`。
 - 状态列头以约 `30px` 高度为基准，在不浪费空间的前提下保留清晰的标题、状态点和数量；卡片容器顶部必须留出足够空隙，确保首张卡片悬浮上移时不被列头裁切或覆盖。
 
-#### 16.6.2 顶部全局栏
+#### 16.5.2 顶部全局栏
 
 - 左侧展示 GoGoal 标识、当前项目名称和数据连接状态。
 - 中间展示“未归档 / 已归档”切换和全局搜索框。
 - 搜索框不显示快捷键提示；输入编号、标题、状态或描述后即时模糊筛选目标、AI 任务和用户任务，不需要提交按钮。
 - 输入非空搜索条件时取消目标和任务选择；清空搜索内容不主动取消已有选择。
-- 右侧展示当前时间、配置时区、最近数据更新时间、自动刷新间隔、手动刷新按钮和明暗主题按钮。
+- 右侧展示设备当前时间、最近数据更新时间、自动刷新间隔、手动刷新按钮和明暗主题按钮，不展示时区标签。
 - 页面按照 `dashboard.refreshSeconds` 定时重新请求数据，手动刷新与自动刷新都只更新数据区域，不重载整页。
 
-#### 16.6.3 目标、任务与时间线
+#### 16.5.3 目标、任务与时间线
 
 - 目标卡片单列展示，并按编号从新到旧排列。
 - AI 任务和用户任务分别进入对应状态列，各列内同样按编号从新到旧排列；超过区域高度时仅滚动该列。
@@ -1544,9 +1579,9 @@ dist/dashboard/
 - 单击目标后，右侧任务区只展示该目标的关联任务，时间线展示该目标及关联任务的全部日志；再次单击目标则取消目标和任务选择。
 - 单击任务后，时间线只展示该任务日志；取消任务选择不取消目标选择。任一时刻最多选中一个目标和一个任务。
 - 未选择目标或任务时不展示日志条目，时间线显示“请选择目标或任务”的空状态。
-- 时间线按新到旧排序，用 `G`、`A`、`U` 和颜色区分目标、AI 任务与用户任务；时间线标题图标使用语义明确的时钟图标，不使用方向含义不清的箭头图标。
+- 时间线按日志编号从新到旧排序，不依赖设备时间字符串决定先后；用 `G`、`A`、`U` 和颜色区分目标、AI 任务与用户任务。时间线标题图标使用语义明确的时钟图标，不使用方向含义不清的箭头图标。
 
-#### 16.6.4 悬浮信息与详情阅读
+#### 16.5.4 悬浮信息与详情阅读
 
 - 指针在卡片上停留 `1s` 后，于指针右下方展示详情浮框；靠近视口边缘时自动调整位置，浮框不得超出页面。
 - 浮框展示该 JSON 记录中所有适合公开展示的字段。字段键转换为 `config.locale` 对应的界面文案，空值或当前不存在的值统一显示 `-`。
@@ -1556,7 +1591,7 @@ dist/dashboard/
 - 点击遮罩空白处、点击关闭按钮或按 `Esc` 均可关闭详情弹框。
 - Markdown 渲染需支持标题、段落、列表、表格、代码块、引用、链接和 Mermaid；可以从标题生成阅读目录，但不得依赖默认章节名称解析业务状态，并继续遵守第 16.4 节的安全过滤要求。
 
-#### 16.6.5 视觉语言与主题
+#### 16.5.5 视觉语言与主题
 
 - 视觉方向以白色画布、近黑文字和单一品牌强调色 `#ff385c` 为主，避免引入第二套品牌主色。
 - 面板、卡片和搜索框采用柔和圆角、细边框和克制留白；层级主要通过边框、背景明度和一档阴影建立。
@@ -1564,20 +1599,20 @@ dist/dashboard/
 - 同时提供亮色和暗色主题，保证文字、边框、选中态、状态色与 Markdown 内容在两种主题下均具备足够对比度。
 - 页面标题和卡片信息优先保证可读性；不得为了在单屏塞入更多卡片而回退到原型审阅中已经否决的过小字号或过密头部。
 
-#### 16.6.6 国际化边界
+#### 16.5.6 国际化边界
 
 - 除 JSON 和 Markdown 原始内容外，所有看板固定文案都必须通过语言资源读取，包括面板标题、状态、动作、字段名、按钮、空状态、错误提示、浮框说明和详情标签。
 - `config.locale` 决定 CLI 与看板界面语言，当前只提供 `zh-CN` 和 `en-US`；非法值由配置校验拒绝，不作为可回退的第三方语言处理。
 - JSON 中的用户数据和 Markdown 正文保持原文，不自动翻译。
 - 当前定稿原型使用 `zh-CN` 演示，正式实现需将中文文案从组件代码中剥离，并提供中文、英文两套语言资源。
 
-### 16.7 原型与正式实现的关系
+### 16.6 原型与正式实现的关系
 
 - `reference/prototype/` 负责保存设计基准、模拟数据和已验证交互，供开发和视觉回归参考。
-- 正式 Skill 的看板资源最终位于 `skills/gogoal/assets/dashboard/`，通过 `gogoal dashboard serve` 和 `gogoal dashboard export` 使用。
+- 正式 Skill 的看板资源最终位于 `skills/gogoal/assets/dashboard/`，只通过 `gogoal dashboard serve` 提供给本地浏览器。
 - 正式实现必须以四个状态 JSON、`log.json`、配置和 Markdown 为真实数据源，删除原型内置模拟数据依赖。
 - 看板保持只读；原型中的所有按钮和交互不得演变为绕过 CLI 的数据写入入口。
-- 原型技术栈不是对用户项目的运行时依赖承诺。发布版应优先减少依赖、构建产物体积和安装步骤，并保持本地服务与静态导出两种模式行为一致。
+- 原型技术栈不是对用户项目的运行时依赖承诺。正式资源应优先减少依赖、构建产物体积和安装步骤，全部前端运行依赖随 Skill 打包，不从 CDN 动态加载。
 
 ## 17. Skill 与开源仓库结构
 
@@ -1609,6 +1644,7 @@ gogoal-skill/
 │       │   └── git-workflow.md
 │       ├── scripts/
 │       │   ├── gogoal.py
+│       │   ├── vendor/
 │       │   └── gogoal/
 │       │       ├── config.py
 │       │       ├── storage.py
@@ -1628,7 +1664,8 @@ gogoal-skill/
 │           └── dashboard/
 │               ├── index.html
 │               ├── app.js
-│               └── style.css
+│               ├── style.css
+│               └── vendor/
 ├── tests/
 ├── examples/
 │   └── demo-project/
@@ -1637,6 +1674,7 @@ gogoal-skill/
 │       └── ci.yml
 ├── README.md
 ├── LICENSE
+├── THIRD_PARTY_NOTICES.md
 └── .gitignore
 ```
 
@@ -1653,9 +1691,10 @@ gogoal-skill/
 | `references/git-workflow.md` | 保存 Git 配置、分支、工作树、候选合入、失败处理、提交和变更隔离要求。 |
 | `scripts/gogoal.py` | CLI 唯一入口。 |
 | `scripts/gogoal/` | 保存 CLI 内部实现模块。 |
+| `scripts/vendor/` | 保存适合随 Skill 分发的纯 Python 第三方运行依赖，运行时不从网络安装。 |
 | `assets/writing/zh-CN/` | 保存初始化时复制到项目的中文目标与任务默认写作指南。 |
 | `assets/writing/en-US/` | 保存初始化时复制到项目的英文目标与任务默认写作指南。 |
-| `assets/dashboard/` | 保存固定的只读看板前端资源。 |
+| `assets/dashboard/` | 保存固定的只读看板前端资源及本地化后的第三方前端依赖，不从 CDN 加载。 |
 
 当前仓库 `reference/work-management-spec.md` 只是创建 GoGoal 的外部实践参考，不原样复制进 Skill。应提取其中已经验证有效的经验，融合为新的 `SKILL.md` 和 `references/` 内容。`reference/prototype/` 同样只用于定稿设计和开发验证，正式前端资源需整理后进入 `skills/gogoal/assets/dashboard/`。
 
@@ -1670,7 +1709,8 @@ gogoal-skill/
 | `examples/demo-project/` | 提供可直接体验的示例目标任务数据。 |
 | `.github/workflows/ci.yml` | 在提交和 PR 中执行 Skill 校验和自动测试。 |
 | `README.md` | 面向用户说明功能、安装、使用、演示和安全边界。 |
-| `LICENSE` | 明确开源使用、修改和分发许可。 |
+| `LICENSE` | 保存 Apache License 2.0 完整许可证文本。 |
+| `THIRD_PARTY_NOTICES.md` | 汇总随 Skill 打包的第三方组件、版本、来源和许可证要求。 |
 | `.gitignore` | 排除缓存、测试产物和临时文件。 |
 
 当前仓库结构不包含额外的 `packages/`、`schemas/` 或大量 `docs/` 目录。数据规则由 CLI 校验和 `references/data-format.md` 共同定义。
@@ -1693,6 +1733,28 @@ gogoal-skill/
 - 数据格式版本 `format` 与 Plugin 版本分别管理。
 - 对外发布前提供安装示例、演示项目、看板截图和安全说明。
 
+### 17.6 运行环境、依赖与许可证
+
+GoGoal 使用一套跨平台 Python 与前端代码支持 macOS、Windows 和 Linux，不为三个系统维护独立业务实现。平台差异集中在薄兼容层中，统一处理解释器与 Git 命令发现、路径、文件锁、子进程、浏览器打开和工作树路径；主体优先使用 `pathlib`、`subprocess`、`webbrowser`、`os.replace` 等跨平台标准能力。
+
+运行环境要求：
+
+- 最低 Python 版本为 3.12。Skill 在初始化和执行 CLI 前依次探测平台可用的 Python 3.12 或更高版本解释器；Windows 兼容 `py -3.12` 与 `python`，macOS 和 Linux 兼容 `python3.12`、`python3` 与 `python`，并以实际版本校验结果为准。
+- Python 解释器不随 Skill 打包。未找到兼容解释器时停止初始化或 CLI 操作，输出当前检测结果和安装指引，不静默使用低版本解释器。
+- Git 使用设备环境中的 `git`，不随 Skill 打包。没有 Git、当前目录不是 Git 仓库或 Git 能力不足时，关闭对应 Git 集成并按有效并行数 `1` 降级，不影响基础数据、日志和本地看板。
+- 看板正式支持最新稳定版桌面 Google Chrome 和 Microsoft Edge；两者使用同一套 Chromium 前端实现。其他浏览器可以尝试访问，但不纳入兼容性承诺。
+
+依赖分发规则：
+
+- 优先使用 Python 标准库和浏览器原生能力，减少第三方运行依赖。
+- 适合源码分发的纯 Python 库、跨平台文件锁库、Markdown、Mermaid、安全过滤及其他前端构建产物随 Skill 一起打包，并固定版本。
+- Python 解释器、Git、浏览器及其他不适合嵌入 Skill 的系统能力依赖用户环境，不在安装或运行时自动下载。
+- 运行时不访问 CDN，不通过包管理器临时安装依赖；看板离线可用。
+- 不引入必须为每个操作系统单独编译的原生扩展，除非后续实现证明无法用跨平台纯 Python 或前端方案满足要求并直接修订本蓝图。
+- 所有随包第三方依赖必须保留其许可证、版权和必要 NOTICE，集中登记在 `THIRD_PARTY_NOTICES.md`，并在 CI 中校验依赖声明完整性。
+
+GoGoal 自身采用 Apache License 2.0。仓库根目录 `LICENSE` 保存完整许可证文本；源码文件、发布包和再分发内容遵守 Apache-2.0 的版权、许可证、NOTICE 和修改说明要求。第三方组件继续遵守各自许可证，不因 GoGoal 的主许可证而改变。
+
 ## 18. 测试与质量保障
 
 ### 18.1 单元测试
@@ -1701,7 +1763,7 @@ gogoal-skill/
 
 - 配置默认值、读取、更新和非法值。
 - `execution.maxParallelTasks` 默认为 `2`，只接受大于或等于 `1` 的整数。
-- `git.enabled`、`git.autoCommit`、`git.branchPrefix`、`git.worktreeRoot` 和 `dashboard.gitActivity` 的有效组合及关闭 Git 时的降级行为。
+- `git.enabled`、`git.autoCommit`、`git.branchPrefix`、`git.worktreeRoot` 和 `dashboard.gitActivity` 的有效组合及关闭 Git 时有效并行数固定为 `1` 的降级行为。
 - `git.branchPrefix` 自动补全尾部斜杠，`git.worktreeRoot` 相对主仓库解析且禁止静默落入仓库内部。
 - `dashboard.refreshSeconds` 默认值为 `180`。
 - `locale` 只接受 `zh-CN` 和 `en-US`。
@@ -1709,11 +1771,15 @@ gogoal-skill/
 - 目标、AI 任务、用户任务和日志编号分配。
 - 所有合法状态迁移。
 - 所有非法状态迁移。
+- 第 5.5 节矩阵中的允许源状态、目标状态、字段副作用和失败条件。
 - 标题和描述更新。
-- 阻塞、恢复及 `blocker` 校验。
+- `blocker` 当且仅当状态为 `blocked` 时非空，`endedAt` 当且仅当状态为终态时非空，`archivedAt` 只存在于归档记录中。
+- 目标阻塞前关联 `active` AI 任务已全部完成或阻塞，且不会通过取消仍应继续的任务规避该约束。
 - 并行容量计算、达到上限时拒绝启动、阻塞释放容量、恢复临时超额和配置动态降低时的非抢占行为。
 - 用户任务三种 `kind`。
+- 用户任务完成、取消和目标取消级联时 `result` 非空。
 - 结束时间和归档时间生成。
+- 全部时间取设备本地时间，设备时间变化不重写历史记录，日志排序以编号和追加顺序为准。
 - 活动与归档迁移。
 - 目标归档时关联任务归档。
 - 目标取消时非终态任务取消。
@@ -1738,11 +1804,12 @@ init
 → validate --strict
 ```
 
-还需覆盖 `init --locale en-US`、已有指南保护、非法语言、指南缺失、`task capacity`、并行启动准入与非抢占恢复、目标取消、任务取消、JSON 损坏、日志不一致、重复编号、缺失文档、格式版本不兼容、`git.enabled=false` 降级、`git.autoCommit` 开关以及自动提交精确暂存边界。
+还需覆盖 `init --locale en-US`、已有指南保护、非法语言、指南缺失、`task capacity`、并行启动准入与非抢占恢复、目标取消、任务取消、JSON 损坏、日志不一致、重复编号、缺失文档、格式版本不兼容、`git.enabled=false` 降级、`git.autoCommit` 开关、CLI 永不提交以及主 AI 自动提交的精确暂存边界。
 
 ### 18.3 Git、工作树与多代理执行测试
 
 - 顺序执行、主 AI 独立工作树、子代理独立工作树和混合执行四种模式。
+- Git 可用且启用时按预定目标分支和组合验证完成任务；Git 不可用或关闭时在当前工作目录顺序执行、有效并行数固定为 `1` 并按当前目录验证结果完成任务。
 - 分支使用 `gogoal/` 前缀，工作树进入 `<worktreeRoot>/<仓库名>/<任务目录>/`，分支名和物理目录正确解耦。
 - 子代理只能修改任务实现文件，不能调用 GoGoal 修改命令或修改任何 `gogoal/` 管理文件。
 - 一个执行中 AI 任务默认最多使用一个主要实施子代理和一个任务工作树。
@@ -1770,10 +1837,18 @@ init
 - Markdown 安全过滤。
 - 路径穿越拦截。
 - 监听地址和端口覆盖。
-- 静态导出完整性。
 - 无 Git 仓库或关闭 Git 时正常降级。
+- 最新稳定版桌面 Chrome 和 Edge 的功能、布局、主题及 Markdown 渲染兼容性。
 
-### 18.5 Skill 验证
+### 18.5 运行环境与分发测试
+
+- 在 macOS、Windows 和 Linux 上分别运行 CLI、文件锁、原子写入、本地 HTTP 服务、浏览器打开和 Git 工作树测试。
+- 检测 Python 3.12、兼容的更高版本、缺少解释器和解释器版本过低四种情况；不兼容时提供明确诊断且不修改项目数据。
+- 检测设备 Git 可用、缺失、非 Git 仓库和工作树能力不可用的降级行为。
+- 验证所有运行时前端资源和适合打包的纯 Python 依赖均包含在 Skill 中，断网环境不访问 CDN 或包管理器。
+- 校验 `THIRD_PARTY_NOTICES.md` 与实际打包依赖一致，并检查 Apache-2.0 `LICENSE`、版权、NOTICE 和修改说明要求。
+
+### 18.6 Skill 验证
 
 - 使用 Skill 标准校验器检查 `SKILL.md` 和 `agents/openai.yaml`。
 - 使用真实示例场景前向测试目标登记、启动、阻塞、验收修改和归档。
@@ -1786,19 +1861,21 @@ init
 - 验证主 AI 根据任务依赖和冲突风险自主选择实际并行度，而不是为了达到配置上限强制派发子代理。
 - 验证主 AI 是管理数据唯一写入者，子代理结果只作为候选实现，任务生命周期仍由主 AI 维护。
 
-## 19. 开发阶段规划
+## 19. 开发实施顺序
 
-### 阶段一：数据内核与 CLI
+### 步骤一：数据内核与 CLI
 
 - 建立标准 Skill 和 Plugin 骨架。
+- 实现 Python 3.12 解释器发现、macOS/Windows/Linux 薄兼容层以及系统能力诊断。
 - 实现 `config.json` 和四个状态 JSON。
 - 实现状态机、编号、查询、修改和归档。
 - 实现最大并行任务数配置、`task capacity` 和任务启动准入校验。
 - 实现 `log.json` 自动维护。
 - 实现文件锁、原子写入和 `validate`。
+- 随 Skill 打包适合分发的纯 Python 依赖并登记第三方许可证，不在运行时联网安装。
 - 完成数据与 CLI 自动测试。
 
-### 阶段二：Markdown 契约与写作指南实现
+### 步骤二：Markdown 契约与写作指南实现
 
 - 将第 12 章不可覆盖规则写入 `references/document-contract.md`。
 - 编写 `zh-CN` 和 `en-US` 两套目标、AI 任务默认写作指南。
@@ -1806,7 +1883,7 @@ init
 - 在 Skill 中实现按需读取核心契约和对应项目指南的路由。
 - 使用不同领域和不同自定义风格前向测试文档创建、更新、验收和终态保护。
 
-### 阶段三：执行调度与 Git 隔离实现
+### 步骤三：执行调度与 Git 隔离实现
 
 - 将主 AI 单一管理写入者、子代理结果契约和执行方式选择规则写入 Skill 及对应 references。
 - 实现 `git.enabled`、`git.autoCommit`、任务分支命名和工作树根目录规则。
@@ -1814,19 +1891,20 @@ init
 - 实现候选合入、组合验证、冲突处理、失败恢复和安全清理规则。
 - 使用相互独立、文件冲突、共享资源冲突、测试失败和配置动态降低等场景进行前向测试。
 
-### 阶段四：看板正式实现与数据接入
+### 步骤四：看板正式实现与数据接入
 
-- 以 `reference/prototype/` 和第 16.6 节为定稿基线，抽取正式前端资源。
+- 以 `reference/prototype/` 和第 16.5 节为定稿基线，抽取正式前端资源。
 - 将原型模拟数据替换为四个状态 JSON、`log.json`、配置和 Markdown 的只读接口。
 - 将固定中文界面文案拆分为 `zh-CN` 和 `en-US` 两套受 `config.locale` 控制的语言资源。
 - 实现只读 HTTP 服务和 `skills/gogoal/assets/dashboard/` 前端。
-- 实现定时刷新和静态导出。
+- 实现定时刷新和本地只读服务，不提供静态导出。
 - 完成视觉回归、交互、国际化、可访问性和安全验证。
 
-### 阶段五：Skill 联调与发布
+### 步骤五：Skill 联调与发布
 
 - 编写精简 `SKILL.md` 和界面元数据。
 - 通过真实目标场景前向测试。
-- 完成示例项目、README、CI 和开源许可证。
+- 完成示例项目、README、CI、Apache-2.0 `LICENSE` 和第三方许可证清单。
+- 在 macOS、Windows、Linux 及桌面 Chrome、Edge 上完成兼容性验证。
 - 打包 Plugin 和 Marketplace 条目。
 - 创建版本发布并验证安装体验。
