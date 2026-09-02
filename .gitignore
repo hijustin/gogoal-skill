@@ -74,6 +74,18 @@ web_modules/
 .cache
 .parcel-cache
 
+# GoGoal/Python development
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+.gogoal-worktrees/
+gogoal/.lock
+
 # Next.js build output
 .next
 out

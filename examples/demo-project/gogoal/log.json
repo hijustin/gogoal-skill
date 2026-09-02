@@ -1,0 +1,100 @@
+{
+  "logs": [
+    {
+      "id": 1,
+      "time": "2026-08-25 09:00",
+      "entity": "goal",
+      "entityId": 1,
+      "goalId": 1,
+      "title": "发布 GoGoal 通用 Skill",
+      "action": "create",
+      "statusFrom": null,
+      "statusTo": "pending",
+      "note": null
+    },
+    {
+      "id": 2,
+      "time": "2026-08-25 09:15",
+      "entity": "goal",
+      "entityId": 1,
+      "goalId": 1,
+      "title": "发布 GoGoal 通用 Skill",
+      "action": "start",
+      "statusFrom": "pending",
+      "statusTo": "active",
+      "note": null
+    },
+    {
+      "id": 3,
+      "time": "2026-08-25 09:20",
+      "entity": "ai",
+      "entityId": 1,
+      "goalId": 1,
+      "title": "实现目标任务 CLI",
+      "action": "create",
+      "statusFrom": null,
+      "statusTo": "pending",
+      "note": null
+    },
+    {
+      "id": 4,
+      "time": "2026-08-25 09:25",
+      "entity": "ai",
+      "entityId": 2,
+      "goalId": 1,
+      "title": "接入本地只读看板",
+      "action": "create",
+      "statusFrom": null,
+      "statusTo": "pending",
+      "note": null
+    },
+    {
+      "id": 5,
+      "time": "2026-08-25 09:30",
+      "entity": "user",
+      "entityId": 1,
+      "goalId": 1,
+      "title": "确认公开发布说明",
+      "action": "create",
+      "statusFrom": null,
+      "statusTo": "pending",
+      "note": null
+    },
+    {
+      "id": 6,
+      "time": "2026-08-25 09:35",
+      "entity": "ai",
+      "entityId": 1,
+      "goalId": 1,
+      "title": "实现目标任务 CLI",
+      "action": "start",
+      "statusFrom": "pending",
+      "statusTo": "active",
+      "note": null
+    },
+    {
+      "id": 7,
+      "time": "2026-08-25 11:30",
+      "entity": "ai",
+      "entityId": 1,
+      "goalId": 1,
+      "title": "实现目标任务 CLI",
+      "action": "complete",
+      "statusFrom": "active",
+      "statusTo": "completed",
+      "note": null
+    },
+    {
+      "id": 8,
+      "time": "2026-08-25 11:35",
+      "entity": "ai",
+      "entityId": 2,
+      "goalId": 1,
+      "title": "接入本地只读看板",
+      "action": "start",
+      "statusFrom": "pending",
+      "statusTo": "active",
+      "note": null
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "targets": [
+    {
+      "id": 1,
+      "title": "发布 GoGoal 通用 Skill",
+      "description": "完成可分发 Skill、稳定 CLI、本地只读看板、文档和发布准备。",
+      "status": "active",
+      "document": "targets/1.md",
+      "recordedAt": "2026-08-25 09:00",
+      "endedAt": null,
+      "blocker": null
+    }
+  ]
+}

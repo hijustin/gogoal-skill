@@ -2,9 +2,9 @@
 
 > 文档类型：产品与技术开发蓝图
 > 当前状态：核心方案、Markdown 文档规范与看板页面原型均已收敛
-> 最后整理日期：2026-08-25
+> 最后整理日期：2026-08-26
 > 项目名称：GoGoal
-> 产品、Skill、Plugin、CLI 及项目数据目录标识：`gogoal`
+> 产品、Skill、CLI 及项目数据目录标识：`gogoal`
 > GitHub 仓库：`gogoal-skill`
 
 本文档定义 GoGoal 当前范围内的产品定位、工作流、数据格式、CLI、日志、看板技术架构、Git 约束、Skill 结构和开发要求，作为实现与验收的指导蓝图。
@@ -78,7 +78,6 @@ GoGoal 当前范围不包含：
 | --- | --- |
 | 产品展示名称 | `GoGoal` |
 | GitHub 仓库 | `gogoal-skill` |
-| Plugin ID | `gogoal` |
 | Skill 名称 | `gogoal` |
 | CLI 命令 | `gogoal` |
 | 项目数据目录 | `gogoal/` |
@@ -278,6 +277,8 @@ pending / active / blocked → cancelled
 
 Skill 与 CLI 必须共同遵守以下矩阵。CLI 负责校验状态、字段、关联、容量和数据一致性等确定性条件；主 AI 负责判断用户授权、实际结果、目标边界和验证是否成立等语义条件。任一层不满足都不得执行或宣称迁移成功。表中的“源状态”只指活动 JSON 中对象的状态；归档对象和不在允许源状态中的对象一律拒绝修改。
 
+AI 任务的前置任务、用户依赖和共享资源条件属于 Markdown 中的业务语义。主 AI 必须在调用 `task start --type ai` 前读取目标与任务文档并确认这些条件已经满足；CLI 不解析 Markdown，也不在任务 JSON 中维护结构化依赖字段。
+
 #### 目标命令
 
 | 命令 | 允许源状态 | 目标状态 | 字段及关联副作用 | 主要失败条件 |
@@ -299,7 +300,7 @@ Skill 与 CLI 必须共同遵守以下矩阵。CLI 负责校验状态、字段�
 | --- | --- | --- | --- | --- |
 | `task create --type ai` | 不适用 | `pending` | 只允许关联 `active` 目标；分配 AI 任务永久编号和 `recordedAt`，生成稳定 `document` 路径。 | 目标不存在、不是 `active` 或已归档；参数、数据或写入非法。 |
 | `task update --type ai` | `pending`、`active`、`blocked` | 保持不变 | 更新标题和/或描述；编号、关联目标、`recordedAt` 和文档路径不变。 | 任务已终态或归档、没有可更新字段、字段非法。 |
-| `task start --type ai` | `pending` | `active` | 占用一个有效并行名额。 | 关联目标不是 `active`、存在未完成依赖、达到有效并行上限。 |
+| `task start --type ai` | `pending` | `active` | 占用一个有效并行名额。 | 关联目标不是 `active`、达到有效并行上限，或文档、数据校验失败。 |
 | `task block --type ai` | `active` | `blocked` | 写入非空 `blocker` 并释放有效并行名额。 | 阻塞参数为空、仍可在任务边界内继续或源状态不符。 |
 | `task resume --type ai` | `blocked` | `active` | 清空 `blocker`；恢复可造成非抢占式临时超额。 | 关联目标不是 `active`、解除条件未满足或源状态不符。 |
 | `task complete --type ai` | `active` | `completed` | 使用设备本地时间写入 `endedAt`，`blocker` 为 `null`，释放并行名额。 | 未达到对应 Git 模式的完成门槛、验证失败或源状态不符。 |
@@ -389,7 +390,7 @@ Skill 与 CLI 必须共同遵守以下矩阵。CLI 负责校验状态、字段�
 3. 将独立任务分支和工作树派发给一个子代理实施。
 4. 在同一目标中组合使用顺序执行与隔离并行。
 
-适合并行的任务必须满足：无未完成的前置任务，改动文件和数据结构不重叠或可以安全合入，测试可以独立运行，不争用同一端口、数据库、容器、账号或其他共享资源，不依赖尚未完成的用户决定，也不包含尚未获得单独授权的高风险操作。存在任务依赖、同文件或同 schema 高频修改、共享环境冲突、范围不清或高合入风险时应顺序执行。
+主 AI 根据目标与任务 Markdown 判断前置任务、用户依赖和共享资源条件是否满足。适合并行的任务必须满足：无未完成的前置任务，改动文件和数据结构不重叠或可以安全合入，测试可以独立运行，不争用同一端口、数据库、容器、账号或其他共享资源，不依赖尚未完成的用户决定，也不包含尚未获得单独授权的高风险操作。存在任务依赖、同文件或同 schema 高频修改、共享环境冲突、范围不清或高合入风险时应顺序执行。
 
 目标和任务的生命周期始终由主 AI 负责。主 AI 是 `gogoal/` 的唯一业务写入者，负责调度、启动、阻塞、恢复、完成、取消、文档维护、用户任务、结果审查、合入和目标验收流转。子代理可以读取完成任务所需的目标与任务上下文，只负责实现、任务级验证和返回结果，不得调用 GoGoal 修改命令，不得修改四个状态 JSON、`log.json`、目标 Markdown、任务 Markdown 或写作指南。
 
@@ -1620,22 +1621,16 @@ http://127.0.0.1:4173
 
 ```text
 gogoal-skill/
-├── .codex-plugin/
-│   └── plugin.json
-├── .agents/
-│   └── plugins/
-│       └── marketplace.json
 ├── reference/
 │   ├── blueprint.md
 │   ├── design.md
 │   ├── page.md
+│   ├── problem.md
 │   ├── work-management-spec.md
 │   └── prototype/
 ├── skills/
 │   └── gogoal/
 │       ├── SKILL.md
-│       ├── agents/
-│       │   └── openai.yaml
 │       ├── references/
 │       │   ├── workflow.md
 │       │   ├── data-format.md
@@ -1644,15 +1639,17 @@ gogoal-skill/
 │       │   └── git-workflow.md
 │       ├── scripts/
 │       │   ├── gogoal.py
-│       │   ├── vendor/
 │       │   └── gogoal/
-│       │       ├── config.py
+│       │       ├── __init__.py
+│       │       ├── cli.py
+│       │       ├── constants.py
+│       │       ├── dashboard.py
+│       │       ├── errors.py
+│       │       ├── i18n.py
+│       │       ├── platform.py
+│       │       ├── service.py
 │       │       ├── storage.py
-│       │       ├── validation.py
-│       │       ├── transitions.py
-│       │       ├── commands.py
-│       │       ├── logging.py
-│       │       └── dashboard.py
+│       │       └── validation.py
 │       └── assets/
 │           ├── writing/
 │           │   ├── zh-CN/
@@ -1664,7 +1661,7 @@ gogoal-skill/
 │           └── dashboard/
 │               ├── index.html
 │               ├── app.js
-│               ├── style.css
+│               ├── styles.css
 │               └── vendor/
 ├── tests/
 ├── examples/
@@ -1674,6 +1671,7 @@ gogoal-skill/
 │       └── ci.yml
 ├── README.md
 ├── LICENSE
+├── NOTICE
 ├── THIRD_PARTY_NOTICES.md
 └── .gitignore
 ```
@@ -1683,7 +1681,6 @@ gogoal-skill/
 | 文件或目录 | 作用 |
 | --- | --- |
 | `SKILL.md` | 保存精简的触发条件、核心工作流、边界和资源路由。 |
-| `agents/openai.yaml` | 保存界面展示名称、简短说明和默认提示。 |
 | `references/workflow.md` | 保存目标任务状态机、授权、主 AI 与子代理职责、执行调度、验收和归档规则。 |
 | `references/data-format.md` | 保存配置、四个状态 JSON 和日志的完整标准。 |
 | `references/document-contract.md` | 保存不可由项目写作指南覆盖的文档语义、安全边界、生命周期更新和链接规则。 |
@@ -1691,7 +1688,6 @@ gogoal-skill/
 | `references/git-workflow.md` | 保存 Git 配置、分支、工作树、候选合入、失败处理、提交和变更隔离要求。 |
 | `scripts/gogoal.py` | CLI 唯一入口。 |
 | `scripts/gogoal/` | 保存 CLI 内部实现模块。 |
-| `scripts/vendor/` | 保存适合随 Skill 分发的纯 Python 第三方运行依赖，运行时不从网络安装。 |
 | `assets/writing/zh-CN/` | 保存初始化时复制到项目的中文目标与任务默认写作指南。 |
 | `assets/writing/en-US/` | 保存初始化时复制到项目的英文目标与任务默认写作指南。 |
 | `assets/dashboard/` | 保存固定的只读看板前端资源及本地化后的第三方前端依赖，不从 CDN 加载。 |
@@ -1702,14 +1698,13 @@ gogoal-skill/
 
 | 文件或目录 | 作用 |
 | --- | --- |
-| `.codex-plugin/plugin.json` | 定义 Plugin 标识、版本、说明和包含的 Skill。 |
-| `.agents/plugins/marketplace.json` | 允许 GitHub 仓库作为可添加的 Plugin Marketplace 源。 |
 | `reference/` | 保存开发蓝图、页面设计输入、原始实践参考和定稿原型；这些材料用于开发追溯，不作为 Skill 运行时上下文。 |
 | `tests/` | 测试存储、状态迁移、日志、校验、CLI 和看板服务。 |
 | `examples/demo-project/` | 提供可直接体验的示例目标任务数据。 |
 | `.github/workflows/ci.yml` | 在提交和 PR 中执行 Skill 校验和自动测试。 |
 | `README.md` | 面向用户说明功能、安装、使用、演示和安全边界。 |
 | `LICENSE` | 保存 Apache License 2.0 完整许可证文本。 |
+| `NOTICE` | 保存项目版权与 Apache-2.0 许可相关声明。 |
 | `THIRD_PARTY_NOTICES.md` | 汇总随 Skill 打包的第三方组件、版本、来源和许可证要求。 |
 | `.gitignore` | 排除缓存、测试产物和临时文件。 |
 
@@ -1726,11 +1721,11 @@ gogoal-skill/
 
 ### 17.5 分发方式
 
-- GitHub 仓库保存完整开源项目。
-- Plugin 使用 `.codex-plugin/plugin.json` 包装 `skills/gogoal/`。
-- Marketplace 文件支持用户通过 GitHub 仓库添加安装源。
+- GitHub 仓库保存完整的通用 Agent Skill 开源项目，运行时核心位于 `skills/gogoal/`。
+- 用户可以将 `skills/gogoal/` 复制或链接到宿主支持的 Skill 搜索目录，也可以使用宿主提供的 GitHub Skill 安装机制；具体命令由宿主决定。
+- 仓库不包含特定宿主的封装清单、应用市场配置或运行时包管理器安装流程。
 - 发布使用语义化版本。
-- 数据格式版本 `format` 与 Plugin 版本分别管理。
+- 数据格式版本 `format` 与 Skill 发布版本分别管理。
 - 对外发布前提供安装示例、演示项目、看板截图和安全说明。
 
 ### 17.6 运行环境、依赖与许可证
@@ -1850,7 +1845,7 @@ init
 
 ### 18.6 Skill 验证
 
-- 使用 Skill 标准校验器检查 `SKILL.md` 和 `agents/openai.yaml`。
+- 使用通用 Agent Skill 标准校验器检查 `skills/gogoal/SKILL.md` 的 frontmatter、目录结构和资源引用。
 - 使用真实示例场景前向测试目标登记、启动、阻塞、验收修改和归档。
 - 测试时向新 AI 会话只提供 Skill 和原始用户请求，不泄露预期答案。
 - 验证 AI 是否始终通过 CLI 管理 JSON、是否遵守启动授权和目标级验收。
@@ -1865,7 +1860,7 @@ init
 
 ### 步骤一：数据内核与 CLI
 
-- 建立标准 Skill 和 Plugin 骨架。
+- 建立通用 Agent Skill 与开源仓库骨架。
 - 实现 Python 3.12 解释器发现、macOS/Windows/Linux 薄兼容层以及系统能力诊断。
 - 实现 `config.json` 和四个状态 JSON。
 - 实现状态机、编号、查询、修改和归档。
@@ -1902,9 +1897,9 @@ init
 
 ### 步骤五：Skill 联调与发布
 
-- 编写精简 `SKILL.md` 和界面元数据。
+- 编写精简、可被通用 Agent Skill 宿主发现和加载的 `SKILL.md`。
 - 通过真实目标场景前向测试。
 - 完成示例项目、README、CI、Apache-2.0 `LICENSE` 和第三方许可证清单。
 - 在 macOS、Windows、Linux 及桌面 Chrome、Edge 上完成兼容性验证。
-- 打包 Plugin 和 Marketplace 条目。
+- 整理可直接复制、链接或由支持 GitHub Skill 安装的宿主加载的发布包，并验证安装后的目录和资源完整性。
 - 创建版本发布并验证安装体验。

@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Python 3.12 · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+      - name: 配置 Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 配置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: 校验 Python 语法
+        run: python -m compileall -q skills/gogoal/scripts
+      - name: 校验看板 JavaScript 语法
+        run: node --check skills/gogoal/assets/dashboard/app.js
+      - name: 运行自动化测试
+        run: python -m unittest discover -s tests -v
+      - name: 校验演示项目
+        working-directory: examples/demo-project
+        run: python ../../skills/gogoal/scripts/gogoal.py validate --strict --json

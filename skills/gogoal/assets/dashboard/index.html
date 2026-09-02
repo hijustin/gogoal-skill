@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>GoGoal</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand-area">
+          <span class="brand-mark">G</span>
+          <strong>GoGoal</strong>
+          <span id="project-name" class="brand-subtitle"></span>
+          <span id="connection" class="connection"></span>
+        </div>
+        <div class="toolbar-center">
+          <div class="scope-switch" role="group">
+            <button id="scope-active" class="active" data-i18n="unarchived"></button>
+            <button id="scope-archive" data-i18n="archived"></button>
+          </div>
+          <label class="search-box">
+            <span aria-hidden="true">⌕</span>
+            <input id="search" type="search" autocomplete="off" data-i18n-placeholder="searchPlaceholder">
+          </label>
+        </div>
+        <div class="toolbar-right">
+          <div class="clock"><strong id="clock"></strong></div>
+          <div class="updated"><strong data-i18n="dataUpdated"></strong><small id="updated-at"></small></div>
+          <button id="refresh" class="icon-button" data-i18n-title="refresh" aria-label="refresh">↻</button>
+          <button id="theme" class="icon-button" data-i18n-title="theme" aria-label="theme">◐</button>
+        </div>
+      </header>
+
+      <section class="board">
+        <aside class="goal-panel panel">
+          <div class="panel-heading">
+            <div class="heading-title"><span class="heading-icon">◎</span><strong data-i18n="goals"></strong></div>
+            <div id="goal-counts" class="heading-counts"></div>
+          </div>
+          <div id="goal-list" class="goal-list scroll-area"></div>
+        </aside>
+
+        <section class="right-board">
+          <section class="ai-panel panel">
+            <div class="panel-heading">
+              <div class="heading-title"><span class="heading-icon">✦</span><strong data-i18n="aiTasks"></strong></div>
+              <div id="ai-counts" class="heading-counts"></div>
+            </div>
+            <div id="ai-board" class="kanban-grid ai-grid"></div>
+          </section>
+
+          <section class="bottom-board">
+            <section class="user-panel panel">
+              <div class="panel-heading">
+                <div class="heading-title"><span class="heading-icon">◇</span><strong data-i18n="userTasks"></strong></div>
+                <div id="user-counts" class="heading-counts"></div>
+              </div>
+              <div id="user-board" class="kanban-grid user-grid"></div>
+            </section>
+            <section class="timeline-panel panel">
+              <div class="panel-heading">
+                <div class="heading-title"><span class="heading-icon">◷</span><strong data-i18n="timeline"></strong></div>
+                <span id="timeline-count" class="count-badge"></span>
+              </div>
+              <div id="timeline" class="timeline scroll-area"></div>
+            </section>
+          </section>
+        </section>
+      </section>
+
+      <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+      <div id="modal" class="modal-backdrop" hidden>
+        <article class="document-modal" role="dialog" aria-modal="true">
+          <header><div><span id="document-type"></span><small id="document-id"></small></div><button id="modal-close" data-i18n-title="close" aria-label="close">×</button></header>
+          <div id="document-reader" class="document-reader scroll-area"></div>
+        </article>
+      </div>
+      <div id="toast" class="toast" hidden></div>
+    </main>
+    <script src="/vendor/mermaid.min.js" defer></script>
+    <script src="/app.js" defer></script>
+  </body>
+</html>

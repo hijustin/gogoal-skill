@@ -1,0 +1,39 @@
+{
+  "aiTasks": [
+    {
+      "id": 1,
+      "title": "实现目标任务 CLI",
+      "description": "实现配置、存储、状态机、日志、查询和一致性校验。",
+      "status": "completed",
+      "goalId": 1,
+      "document": "tasks/1.md",
+      "recordedAt": "2026-08-25 09:20",
+      "endedAt": "2026-08-25 11:30",
+      "blocker": null
+    },
+    {
+      "id": 2,
+      "title": "接入本地只读看板",
+      "description": "将定稿布局接入真实 JSON、日志和 Markdown，并完成双语展示。",
+      "status": "active",
+      "goalId": 1,
+      "document": "tasks/2.md",
+      "recordedAt": "2026-08-25 09:25",
+      "endedAt": null,
+      "blocker": null
+    }
+  ],
+  "userTasks": [
+    {
+      "id": 1,
+      "title": "确认公开发布说明",
+      "description": "确认 README 的安装方式与安全边界适合公开发布。",
+      "kind": "decision",
+      "status": "pending",
+      "result": null,
+      "goalId": 1,
+      "recordedAt": "2026-08-25 09:30",
+      "endedAt": null
+    }
+  ]
+}

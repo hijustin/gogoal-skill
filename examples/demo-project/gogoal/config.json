@@ -1,0 +1,21 @@
+{
+  "format": 1,
+  "project": "GoGoal 演示项目",
+  "locale": "zh-CN",
+  "execution": {
+    "maxParallelTasks": 2
+  },
+  "git": {
+    "enabled": true,
+    "autoCommit": true,
+    "branchPrefix": "gogoal/",
+    "worktreeRoot": "../.gogoal-worktrees"
+  },
+  "dashboard": {
+    "host": "127.0.0.1",
+    "port": 4173,
+    "refreshSeconds": 180,
+    "autoOpen": false,
+    "gitActivity": true
+  }
+}
