@@ -1,83 +1,83 @@
-# GoGoal CLI 命令参考
+# GoGoal CLI Reference
 
-文档中的 `gogoal` 表示：
+In this document, `gogoal` means:
 
 ```bash
-python3.12 <skill目录>/scripts/gogoal.py
+python3.12 <skill-directory>/scripts/gogoal.py
 ```
 
-命令从项目根目录或其子目录执行。所有查询命令可用 `--json` 获取稳定 JSON；修改命令会返回受影响文件和建议提交说明，但永不执行 Git 提交。可用全局 `--project-root <路径>` 显式指定项目根目录。
+Run commands from the project root or any subdirectory. Every query command accepts `--json` for stable JSON output. Mutation commands return affected files and a suggested commit subject, but never create a Git commit. Use the global `--project-root <path>` option to select a project root explicitly.
 
-`config.locale` 决定 CLI 帮助、成功信息、错误前缀、状态和动作的界面语言；支持 `zh-CN` 与 `en-US`。`--json` 的字段名、状态码和动作码保持稳定，用户标题、描述、结果和 Markdown 原文不翻译。提交建议按项目约定保持中文 GoGoal 格式。
+`config.locale` controls the interface language for CLI help, success messages, error prefixes, statuses, and actions; supported values are `zh-CN` and `en-US`. In `--json` output, field names, status codes, and action codes remain stable. User-authored titles, descriptions, results, and Markdown are never translated. Suggested commit subjects retain the project's Chinese GoGoal convention.
 
-## 初始化、配置与校验
+## Initialization, configuration, and validation
 
-| 命令 | 作用和使用方式 |
+| Command | Purpose and usage |
 | --- | --- |
-| `gogoal init [--project "名称"] [--locale zh-CN\|en-US]` | 创建 `gogoal/`、默认配置、空数据、日志、详情目录和对应语言写作指南；不覆盖已有项目。 |
-| `gogoal config list` | 列出完整有效配置。 |
-| `gogoal config get dashboard.port` | 按点路径读取单个值。 |
-| `gogoal config set dashboard.port 4180` | 设置已有配置项；布尔和数字按 JSON 字面量解析，字符串直接传入。 |
-| `gogoal summary [--archive]` | 汇总目标和任务状态，可包含归档数据。 |
-| `gogoal validate [--strict]` | 校验配置、结构、编号、关联、状态、日志、指南、文档路径和一级标题；严格模式把警告视为失败。 |
+| `gogoal init [--project "Name"] [--locale zh-CN\|en-US]` | Create `gogoal/`, default configuration, empty data, logs, detail directories, and writing guides for the selected language. Never overwrite an existing project. |
+| `gogoal config list` | List the complete effective configuration. |
+| `gogoal config get dashboard.port` | Read one value by dotted path. |
+| `gogoal config set dashboard.port 4180` | Set an existing option. Booleans and numbers are parsed as JSON literals; strings are passed directly. |
+| `gogoal summary [--archive]` | Summarize goal and task statuses, optionally including archived data. |
+| `gogoal validate [--strict]` | Validate configuration, structure, IDs, associations, states, logs, guides, document paths, and level-one headings. Strict mode treats warnings as failures. |
 
-对象创建后应立即补充返回路径中的 Markdown；标题更新后应立即同步一级标题。文档缺失或标题不同步时，后续业务修改会停止，直到 `validate` 重新通过。用户任务没有 Markdown，不产生该短暂状态。
+Immediately populate the returned Markdown path after creating an object, and synchronize its level-one heading after renaming. Missing or mismatched documents stop later business mutations until `validate` passes again. User tasks have no Markdown and therefore create no such temporary inconsistency.
 
-## 目标查询与流转
+## Goal queries and lifecycle
 
-| 命令 | 作用和使用方式 |
+| Command | Purpose and usage |
 | --- | --- |
-| `gogoal goal list [--status active] [--archive\|--all]` | 查询目标。默认仅未归档。 |
-| `gogoal goal show 1` | 返回目标完整结构化信息和是否归档。 |
-| `gogoal goal context 1` | 返回目标及全部关联 AI/用户任务的紧凑上下文。 |
-| `gogoal goal create --title "标题" --description "描述"` | 登记 `pending` 目标并分配永久编号与 `targets/<id>.md` 路径。随后由主 AI 创建 Markdown。 |
-| `gogoal goal update 1 [--title "新标题"] [--description "新描述"]` | 更新标题和/或描述；标题变化后主 AI 同步 Markdown 一级标题。 |
-| `gogoal goal start 1` | 在用户已经批准当前计划后从 `pending` 进入 `active`。 |
-| `gogoal goal block 1 --reason "原因" --condition "解除条件"` | 从 `active` 阻塞目标；存在 `active` AI 任务时拒绝。 |
-| `gogoal goal resume 1` | 解除阻塞并恢复为 `active`。 |
-| `gogoal goal submit 1` | 所有关联任务终态后从 `active` 提交为 `review`。 |
-| `gogoal goal revise 1 --note "验收修改摘要"` | 根据用户范围内修改要求从 `review` 恢复为 `active`。 |
-| `gogoal goal complete 1` | 用户验收通过后从 `review` 完成目标。 |
-| `gogoal goal cancel 1 --reason "取消原因"` | 取消目标，并一致地取消全部非终态关联任务。 |
-| `gogoal goal archive 1` | 归档终态目标及仍在活动区的终态关联任务，Markdown 不移动。 |
+| `gogoal goal list [--status active] [--archive\|--all]` | Query goals. Defaults to non-archived records. |
+| `gogoal goal show 1` | Return complete structured data for one goal and whether it is archived. |
+| `gogoal goal context 1` | Return compact context for a goal and all associated AI and user tasks. |
+| `gogoal goal create --title "Title" --description "Description"` | Register a `pending` goal and allocate a permanent ID and `targets/<id>.md` path. The primary AI then creates its Markdown. |
+| `gogoal goal update 1 [--title "New title"] [--description "New description"]` | Update title and/or description. After a title change, the primary AI synchronizes the Markdown heading. |
+| `gogoal goal start 1` | Move a goal from `pending` to `active` after the user approves the current plan. |
+| `gogoal goal block 1 --reason "Reason" --condition "Release condition"` | Block an `active` goal. Rejected while any associated AI task is `active`. |
+| `gogoal goal resume 1` | Remove the blocker and return the goal to `active`. |
+| `gogoal goal submit 1` | Move an `active` goal to `review` after every associated task is terminal. |
+| `gogoal goal revise 1 --note "Acceptance-change summary"` | Return a goal from `review` to `active` for an in-scope user-requested change. |
+| `gogoal goal complete 1` | Complete a goal from `review` after explicit user acceptance. |
+| `gogoal goal cancel 1 --reason "Cancellation reason"` | Cancel a goal and consistently cancel every associated non-terminal task. |
+| `gogoal goal archive 1` | Archive a terminal goal and its terminal associated tasks that remain active records. Markdown stays in place. |
 
-## 任务查询与流转
+## Task queries and lifecycle
 
-AI 和用户任务分别编号，因此单对象命令必须传 `--type ai` 或 `--type user`。
+AI and user tasks have independent IDs, so commands for a single task require `--type ai` or `--type user`.
 
-| 命令 | 作用和使用方式 |
+| Command | Purpose and usage |
 | --- | --- |
-| `gogoal task list [--goal 1] [--type ai\|user] [--status blocked] [--archive\|--all]` | 组合筛选任务。 |
-| `gogoal task show 2 --type ai` | 查询单个任务。 |
-| `gogoal task capacity` | 显示配置上限、环境有效上限、活跃数、剩余名额、阻塞数和 Git 能力。 |
-| `gogoal task create --type ai --goal 1 --title "标题" --description "描述"` | 为 `active` 目标登记 AI 任务；随后由主 AI 创建 `tasks/<id>.md`。 |
-| `gogoal task create --type user --kind dependency\|decision\|other --goal 1 --title "标题" --description "描述"` | 登记需要用户提供、决定或处理的事项，不创建 Markdown。 |
-| `gogoal task update 2 --type ai\|user [--title "新标题"] [--description "新描述"]` | 更新允许状态下的任务信息。 |
-| `gogoal task start 2 --type ai` | 容量允许且目标为 `active` 时启动 AI 任务；调用前主 AI 必须确认文档中声明的前置任务、用户依赖和共享资源已经就绪。 |
-| `gogoal task block 2 --type ai --reason "原因" --condition "解除条件"` | 阻塞活跃 AI 任务并释放并行名额。 |
-| `gogoal task resume 2 --type ai` | 恢复阻塞任务；允许非抢占式临时超额。 |
-| `gogoal task complete 2 --type ai` | 主 AI 确认整合与验证门槛后完成任务。 |
-| `gogoal task complete 2 --type user --result "用户交付或决定"` | 保存非空结果并完成用户任务。 |
-| `gogoal task cancel 2 --type ai --reason "取消原因"` | 取消 AI 任务。 |
-| `gogoal task cancel 2 --type user --result "取消原因"` | 保存非空原因并取消用户任务。 |
-| `gogoal task archive 2 --type ai\|user` | 归档终态任务。 |
+| `gogoal task list [--goal 1] [--type ai\|user] [--status blocked] [--archive\|--all]` | Query tasks using combined filters. |
+| `gogoal task show 2 --type ai` | Query one task. |
+| `gogoal task capacity` | Show the configured limit, effective environment limit, active count, remaining slots, blocked count, and Git capability. |
+| `gogoal task create --type ai --goal 1 --title "Title" --description "Description"` | Register an AI task for an `active` goal. The primary AI then creates `tasks/<id>.md`. |
+| `gogoal task create --type user --kind dependency\|decision\|other --goal 1 --title "Title" --description "Description"` | Register an item the user must provide, decide, or handle. Creates no Markdown. |
+| `gogoal task update 2 --type ai\|user [--title "New title"] [--description "New description"]` | Update task information while its state allows changes. |
+| `gogoal task start 2 --type ai` | Start an AI task when capacity is available and its goal is `active`. Before calling it, the primary AI must verify that document-declared prerequisites, user dependencies, and shared resources are ready. |
+| `gogoal task block 2 --type ai --reason "Reason" --condition "Release condition"` | Block an active AI task and release its parallel slot. |
+| `gogoal task resume 2 --type ai` | Resume a blocked task. Temporary non-preemptive excess capacity is allowed. |
+| `gogoal task complete 2 --type ai` | Complete a task after the primary AI confirms integration and validation gates. |
+| `gogoal task complete 2 --type user --result "User delivery or decision"` | Store a non-empty result and complete a user task. |
+| `gogoal task cancel 2 --type ai --reason "Cancellation reason"` | Cancel an AI task. |
+| `gogoal task cancel 2 --type user --result "Cancellation reason"` | Store a non-empty reason and cancel a user task. |
+| `gogoal task archive 2 --type ai\|user` | Archive a terminal task. |
 
-“实现”不是生命周期命令。它只用于主 AI 对已经通过对应验证的有意义实现提交使用 `AI任务-实现-A-<id>-<标题>` 提交说明；不改变任务状态，也不写 `log.json`。
+“Implementation” is not a lifecycle command. It only names meaningful primary-AI implementation commits that have passed their corresponding checks, using `AI任务-实现-A-<id>-<标题>`. It does not change task state or write `log.json`.
 
-## 日志与看板
+## Logs and dashboard
 
-| 命令 | 作用和使用方式 |
+| Command | Purpose and usage |
 | --- | --- |
-| `gogoal log list [--limit 50] [--goal 1] [--entity goal\|ai\|user] [--id 2] [--action block]` | 从最新到最旧查询管理日志。默认最近 20 条。 |
-| `gogoal log show 15` | 查询一条完整日志。 |
-| `gogoal dashboard serve [--host 127.0.0.1] [--port 4180] [--open]` | 启动动态读取项目数据的本地只读看板；参数只临时覆盖本次监听，不修改配置。 |
+| `gogoal log list [--limit 50] [--goal 1] [--entity goal\|ai\|user] [--id 2] [--action block]` | Query management logs newest first. Defaults to the latest 20. |
+| `gogoal log show 15` | Query one complete log record. |
+| `gogoal dashboard serve [--host 127.0.0.1] [--port 4180] [--open]` | Start the local read-only dashboard, which reads project data dynamically. Arguments temporarily override this server run without changing configuration. |
 
-看板默认只监听 `127.0.0.1`。通过配置或 `--host` 指定非本机地址时不会再次确认，应仅在可信网络中使用。
+The dashboard listens on `127.0.0.1` by default. Explicitly choosing a non-loopback address through configuration or `--host` requires no second confirmation and should be used only on a trusted network.
 
-CLI 不提供日志新增/修改/删除、静态看板导出、Git 提交、推送、PR、发布、子代理调度或 Markdown 正文生成命令。
+The CLI offers no command to add, edit, or delete logs; export a static dashboard; create Git commits; push; open pull requests; publish; schedule sub-agents; or generate Markdown bodies.
 
-## 退出码
+## Exit codes
 
-- `0`：成功。
-- `2`：参数、环境、状态迁移、数据、校验或安全边界错误。
-- `130`：用户中断。
+- `0`: success.
+- `2`: argument, environment, state-transition, data, validation, or security-boundary error.
+- `130`: user interruption.

@@ -1,39 +1,39 @@
-# GoGoal Git、工作树与提交规则
+# GoGoal Git, Worktree, and Commit Rules
 
-## 配置语义
+## Configuration semantics
 
-`git.enabled` 决定 GoGoal 是否使用 Git 状态、分支/工作树辅助和可选活动查询。它不会使 CLI 提交。`git.autoCommit` 只允许主 AI 在完整管理动作或已验证实现节点后自主创建本地提交。任何配置都不授权推送、PR、发布或改写远程历史。
+`git.enabled` controls whether GoGoal uses Git status, branch/worktree assistance, and optional activity queries. It never causes the CLI to commit. `git.autoCommit` only permits the primary AI to create local commits after a complete management action or verified implementation checkpoint. No configuration grants authority to push, open a pull request, publish, or rewrite remote history.
 
-`git.branchPrefix` 是完整任务分支名的前缀。例如前缀 `gogoal/` 可以产生 `gogoal/goal-3-task-8-dashboard`；这不是目录。`git.worktreeRoot` 是主仓库外的工作树根目录，实际目录追加规范化仓库名和任务名，例如 `../.gogoal-worktrees/my-repo/goal-3-task-8-dashboard/`。
+`git.branchPrefix` is the prefix of a complete task branch name. For example, `gogoal/` may produce `gogoal/goal-3-task-8-dashboard`; it is not a directory. `git.worktreeRoot` is the worktree root outside the main repository. The effective path appends a normalized repository name and task name, for example `../.gogoal-worktrees/my-repo/goal-3-task-8-dashboard/`.
 
-Git 缺失、当前项目不是 Git 仓库、Git 被关闭或 `git worktree` 能力不可用时，不创建隔离分支/工作树，有效并行上限降为一。工作树根目录不可写时停止并提示修改配置，不退回仓库内部。
+When Git is unavailable, the current project is not a Git repository, Git integration is disabled, or `git worktree` is unavailable, do not create isolated branches or worktrees and reduce the effective parallel limit to one. If the worktree root is not writable, stop and ask for a configuration change; do not fall back to a directory inside the repository.
 
-## 执行选择
+## Execution choice
 
-- 不需要隔离时直接在当前目标分支顺序执行。
-- 任务边界清楚且可并行时，为任务创建独立分支和工作树。
-- 子代理只获得任务所需上下文和工作树，只返回候选结果、修改文件、验证、偏差、限制、阻塞、分支及提交信息。
-- 主 AI 负责审查、整合、组合验证和生命周期命令。
+- Execute sequentially on the current target branch when isolation is unnecessary.
+- Create an independent branch and worktree when task boundaries are clear and tasks can run in parallel.
+- Give a sub-agent only the context and worktree required for its task. It returns a candidate result, changed files, validation, deviations, limitations, blockers, branch, and commit information.
+- The primary AI owns review, integration, combined validation, and lifecycle commands.
 
-不要为了形式强制每个任务创建分支。共享核心文件、迁移或高冲突任务应缩小并行度或串行执行。
+Do not create a branch for every task merely for ceremony. Reduce parallelism or execute sequentially for shared core files, migrations, or tasks with high conflict risk.
 
-## 合入门槛
+## Integration gates
 
-1. 候选任务分支工作区干净，任务级验证通过。
-2. 主 AI 审查范围、用户改动隔离和文档/规范影响。
-3. 合入预定目标分支；出现冲突时只解决当前任务范围，不覆盖无关用户改动。
-4. 在合并后的组合状态执行必要测试。
-5. 测试通过后更新任务文档并执行 `task complete`。
+1. The candidate task branch worktree is clean and task-level validation passes.
+2. The primary AI reviews scope, separation from user changes, and documentation or specification impact.
+3. Integrate into the intended target branch. Resolve only conflicts within the current task scope and preserve unrelated user changes.
+4. Run required tests against the combined state after integration.
+5. Update the task document and run `task complete` only after tests pass.
 
-并行或高风险任务应从最新目标分支建立同一时间最多一个候选合入工作树，名称采用 `integrate-goal-<goal>-task-<task>-<slug>`。目标分支在验证期间发生影响结果的变化时，基于最新状态重新建立候选结果并重跑受影响验证。
+Parallel or high-risk work should create at most one candidate integration worktree at a time from the latest target branch, named `integrate-goal-<goal>-task-<task>-<slug>`. If the target branch changes in a way that may affect the result during validation, rebuild the candidate on the latest state and rerun affected validation.
 
-测试失败或冲突未解时任务保持 `active`，保留分支和工作树以便修复。若无法在任务边界内推进，先记录异常再阻塞。不得因候选分支单独测试通过就完成任务。
+When tests fail or conflicts remain unresolved, keep the task `active` and retain its branch and worktree for repair. If work cannot proceed within the task boundary, record the exception before blocking. A candidate branch passing its isolated tests is not enough to complete the task.
 
-管理 JSON 冲突时停止普通合并，不用整体 `ours`/`theirs`，不手工拼接日志；根据当前结构化事实通过 CLI 重新执行必要管理动作。
+When management JSON conflicts, stop the ordinary merge. Do not take the complete `ours` or `theirs` version and do not hand-splice logs. Reapply the necessary management actions through the CLI from the current structured facts.
 
-## 提交边界
+## Commit boundaries
 
-推荐提交说明：
+Recommended commit subjects:
 
 ```text
 目标-登记-G-3-标题
@@ -43,8 +43,8 @@ AI任务-完成-A-8-标题
 用户任务-完成-U-2-标题
 ```
 
-目标提交待验收使用 `目标-待验收-G-<id>-<标题>`，验收修改使用 `目标-验收修改-G-<id>-<标题>`。CLI 返回的建议提交均使用同一格式，因此启用 `dashboard.gitActivity` 后可以被看板识别。
+Use `目标-待验收-G-<id>-<标题>` when submitting a goal for review and `目标-验收修改-G-<id>-<标题>` for requested review changes. The CLI's suggested commit subjects follow the same convention so the dashboard can recognize them when `dashboard.gitActivity` is enabled.
 
-管理提交只包含该完整管理动作；实现提交只包含任务边界内实现。不得混入无关用户改动。任务实现、合入和任务完成管理提交通常保持可审查边界。CLI 只返回建议提交消息，永不运行 `git commit`。
+A management commit contains only one complete management action. An implementation commit contains only work inside the task boundary. Do not include unrelated user changes. Task implementation, integration, and task-completion management commits should normally remain independently reviewable. The CLI only returns a suggested subject and never runs `git commit`.
 
-完成并确认无需恢复后再安全删除对应工作树和本地任务分支；删除前解析明确路径和分支，检查无未提交改动，不使用宽泛目录、通配符或破坏性重置。
+After completion, and only when recovery is no longer needed, safely remove the corresponding worktree and local task branch. Resolve exact paths and branch names and verify there are no uncommitted changes before deletion. Never use broad directories, globs, or destructive resets.

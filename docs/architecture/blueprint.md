@@ -2,14 +2,14 @@
 
 > 文档类型：产品与技术开发蓝图
 > 当前状态：核心方案、Markdown 文档规范与看板页面原型均已收敛
-> 最后整理日期：2026-08-26
+> 最后整理日期：2026-09-04
 > 项目名称：GoGoal
 > 产品、Skill、CLI 及项目数据目录标识：`gogoal`
 > GitHub 仓库：`gogoal-skill`
 
 本文档定义 GoGoal 当前范围内的产品定位、工作流、数据格式、CLI、日志、看板技术架构、Git 约束、Skill 结构和开发要求，作为实现与验收的指导蓝图。
 
-实现应以本蓝图为开发基线，并以 `reference/prototype/` 作为当前看板的信息架构、视觉关系和交互参考。规划发生变化时必须直接修订对应的当前事实，不在本文档中保留旧版本内容或决策记录。
+实现应以本蓝图为开发基线，并以 `prototypes/dashboard/` 作为当前看板的信息架构、视觉关系和交互参考。规划发生变化时必须直接修订对应的当前事实，不在本文档中保留旧版本内容或决策记录。
 
 ## 目录
 
@@ -1546,7 +1546,7 @@ http://127.0.0.1:4173
 
 ### 16.5 页面原型定稿要求
 
-`reference/prototype/` 是看板交互原型，用于约束当前看板的信息架构、视觉关系、密度和交互。原型中的模拟数据、Vinext 工程结构和演示性实现不直接构成正式运行时要求；开发时可以抽取为更轻量的固定前端资源，但不得无理由改变本节规定的产品行为。
+`prototypes/dashboard/` 是看板交互原型，用于约束当前看板的信息架构、视觉关系、密度和交互。原型中的模拟数据、Vinext 工程结构和演示性实现不直接构成正式运行时要求；开发时可以抽取为更轻量的固定前端资源，但不得无理由改变本节规定的产品行为。
 
 #### 16.5.1 页面骨架与区域比例
 
@@ -1609,7 +1609,7 @@ http://127.0.0.1:4173
 
 ### 16.6 原型与正式实现的关系
 
-- `reference/prototype/` 负责保存设计基准、模拟数据和已验证交互，供开发和视觉回归参考。
+- `prototypes/dashboard/` 负责保存设计基准、模拟数据和已验证交互，供开发和视觉回归参考。
 - 正式 Skill 的看板资源最终位于 `skills/gogoal/assets/dashboard/`，只通过 `gogoal dashboard serve` 提供给本地浏览器。
 - 正式实现必须以四个状态 JSON、`log.json`、配置和 Markdown 为真实数据源，删除原型内置模拟数据依赖。
 - 看板保持只读；原型中的所有按钮和交互不得演变为绕过 CLI 的数据写入入口。
@@ -1621,13 +1621,23 @@ http://127.0.0.1:4173
 
 ```text
 gogoal-skill/
-├── reference/
-│   ├── blueprint.md
-│   ├── design.md
-│   ├── page.md
-│   ├── problem.md
-│   ├── work-management-spec.md
-│   └── prototype/
+├── docs/
+│   ├── architecture/
+│   │   └── blueprint.md
+│   ├── design/
+│   │   ├── design.md
+│   │   └── page.md
+│   ├── zh-CN/
+│   │   └── skill-reference/
+│   │       ├── workflow.md
+│   │       ├── data-format.md
+│   │       ├── document-contract.md
+│   │       ├── cli-reference.md
+│   │       └── git-workflow.md
+│   └── assets/
+│       └── gogoal-hero.png
+├── prototypes/
+│   └── dashboard/
 ├── skills/
 │   └── gogoal/
 │       ├── SKILL.md
@@ -1670,6 +1680,7 @@ gogoal-skill/
 │   └── workflows/
 │       └── ci.yml
 ├── README.md
+├── README.zh-CN.md
 ├── LICENSE
 ├── NOTICE
 ├── THIRD_PARTY_NOTICES.md
@@ -1692,23 +1703,28 @@ gogoal-skill/
 | `assets/writing/en-US/` | 保存初始化时复制到项目的英文目标与任务默认写作指南。 |
 | `assets/dashboard/` | 保存固定的只读看板前端资源及本地化后的第三方前端依赖，不从 CDN 加载。 |
 
-`reference/prototype/` 只用于定稿设计和开发验证，正式前端资源需整理后进入 `skills/gogoal/assets/dashboard/`。
+`prototypes/dashboard/` 只用于定稿设计和开发验证，正式前端资源需整理后进入 `skills/gogoal/assets/dashboard/`。`skills/gogoal/references/` 使用英文并作为唯一运行时规范；`docs/zh-CN/skill-reference/` 保存对应中文阅读版本，不进入 Skill 运行时上下文。
 
 ### 17.3 Skill 外部文件职责
 
 | 文件或目录 | 作用 |
 | --- | --- |
-| `reference/` | 保存开发蓝图、页面设计输入和定稿原型；这些材料用于开发追溯，不作为 Skill 运行时上下文。 |
+| `docs/architecture/` | 保存当前开发蓝图等架构材料，不作为 Skill 运行时上下文。 |
+| `docs/design/` | 分别保存页面布局和视觉风格设计输入，不作为 Skill 运行时上下文。 |
+| `docs/zh-CN/skill-reference/` | 保存运行时英文规范的中文阅读版本，供中文用户和维护者查阅，不作为规则的第二事实源。 |
+| `docs/assets/` | 保存 README 等项目文档共用的宣传资源。 |
+| `prototypes/dashboard/` | 保存定稿看板的设计基准、模拟数据和交互实验。 |
 | `tests/` | 测试存储、状态迁移、日志、校验、CLI 和看板服务。 |
 | `examples/demo-project/` | 提供可直接体验的示例目标任务数据。 |
 | `.github/workflows/ci.yml` | 在提交和 PR 中执行 Skill 校验和自动测试。 |
-| `README.md` | 面向用户说明功能、安装、使用、演示和安全边界。 |
+| `README.md` | 英文默认项目首页，说明功能、安装、使用、演示和安全边界。 |
+| `README.zh-CN.md` | 与英文首页结构和事实一致的完整简体中文版。 |
 | `LICENSE` | 保存 Apache License 2.0 完整许可证文本。 |
 | `NOTICE` | 保存项目版权与 Apache-2.0 许可相关声明。 |
 | `THIRD_PARTY_NOTICES.md` | 汇总随 Skill 打包的第三方组件、版本、来源和许可证要求。 |
 | `.gitignore` | 排除缓存、测试产物和临时文件。 |
 
-当前仓库结构不包含额外的 `packages/`、`schemas/` 或大量 `docs/` 目录。数据规则由 CLI 校验和 `references/data-format.md` 共同定义。
+当前仓库不额外拆分 `packages/` 或 `schemas/`。运行时数据规则由 CLI 校验和英文唯一规范 `skills/gogoal/references/data-format.md` 共同定义；中文阅读版本不得独立演变规则。
 
 ### 17.4 渐进披露
 
@@ -1888,7 +1904,7 @@ init
 
 ### 步骤四：看板正式实现与数据接入
 
-- 以 `reference/prototype/` 和第 16.5 节为定稿基线，抽取正式前端资源。
+- 以 `prototypes/dashboard/` 和第 16.5 节为定稿基线，抽取正式前端资源。
 - 将原型模拟数据替换为四个状态 JSON、`log.json`、配置和 Markdown 的只读接口。
 - 将固定中文界面文案拆分为 `zh-CN` 和 `en-US` 两套受 `config.locale` 控制的语言资源。
 - 实现只读 HTTP 服务和 `skills/gogoal/assets/dashboard/` 前端。

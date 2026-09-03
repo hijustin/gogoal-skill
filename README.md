@@ -1,62 +1,114 @@
+<div align="center">
+
 # GoGoal
 
-GoGoal 是一个通用、可分发的 Agent Skill：用户先与 AI 明确目标，授权启动后由主 AI 拆分、调度并完成任务，同时用项目内 JSON、Markdown、审计日志和本地只读看板保持全局可见。
+### From user-approved goals to visible, verified outcomes.
 
-GoGoal 遵循开放的 Agent Skills 目录约定，不依赖 Codex Plugin、Marketplace 或特定 AI 宿主。任何能够加载 `SKILL.md` 并执行本地脚本的智能体工具都可以集成它。
+A portable Agent Skill for planning, executing, tracking, and completing goals.
 
-## 功能
+<img src="docs/assets/gogoal-hero.png" width="960" alt="GoGoal guides goals through task planning, implementation, verification, and completion">
 
-- 目标、AI 任务和用户任务的完整状态流转与校验。
-- 四个聚合 JSON 作为当前事实源，`log.json` 作为追加式管理时间线。
-- 每个目标和 AI 任务使用独立 Markdown，写作结构可以在项目内自定义。
-- Git 可用时支持主 AI 自主选择顺序执行、分支、工作树和子代理；Git 不可用时安全降级为单任务顺序执行。
-- 离线、本地、只读看板，支持中文和英文、明暗主题、关联筛选、详情浮框和 Markdown 阅读。
+[English](README.md) · [简体中文](README.zh-CN.md)
 
-## 安装
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB.svg)](https://www.python.org/)
+[![Agent Skill](https://img.shields.io/badge/Agent-Skill-ff385c.svg)](skills/gogoal/SKILL.md)
 
-将 [`skills/gogoal`](skills/gogoal) 整个目录复制到宿主的 Skill 搜索路径，或让支持 GitHub Skill 安装的宿主从本仓库安装该目录。运行环境需要 Python 3.12 或更高版本；Git 和桌面 Chrome/Edge 为可选能力。
+</div>
 
-仓库本身就是分发载体，不需要 Codex Plugin、Marketplace、Node 包或 Python 包安装：
+GoGoal turns an explicitly approved goal into a managed execution loop. The primary AI analyzes the goal, decomposes work, chooses sequential or isolated execution, reviews candidate results, validates the combined outcome, and keeps the user informed through structured project data and a local read-only dashboard.
+
+GoGoal follows the portable Agent Skills directory convention. It does not depend on a Codex Plugin, marketplace, package registry, or a specific AI host. Any agent environment that can load `SKILL.md` and run local scripts can integrate it.
+
+## Core capabilities
+
+- Complete lifecycle rules for goals, AI tasks, and user-owned dependencies or decisions.
+- Four aggregate JSON files as current structured facts, plus an append-only `log.json` timeline.
+- Stable Markdown documents for every goal and AI task, with project-level writing guides that users can customize.
+- Adaptive execution: sequential work, Git branches, external worktrees, sub-agents, or a controlled mixture selected by the primary AI.
+- Strict validation for schemas, IDs, associations, state transitions, logs, document headings, and common credential patterns.
+- Offline, local, read-only dashboard with Chinese and English UI, light and dark themes, filtering, rich record details, timelines, and Markdown/Mermaid rendering.
+
+## How it works
+
+```text
+User defines a goal
+        ↓
+AI analyzes scope and proposes a plan
+        ↓
+User explicitly approves the plan
+        ↓
+Primary AI creates and executes tasks
+        ↓
+Results are integrated and validated
+        ↓
+User reviews and accepts the goal
+```
+
+JSON owns compact lifecycle facts. Markdown owns reasoning, plans, implementation context, validation, delivery, and reviews. The CLI is the only normal writer for structured data, while the dashboard remains read-only.
+
+## Dashboard
+
+The dashboard reads live project data through a local HTTP service. It shows goals, AI tasks, user tasks, status columns, related activity, hover details, and long-form Markdown without rewriting or embedding project data.
+
+```bash
+python3.12 <skill-directory>/scripts/gogoal.py dashboard serve --open
+```
+
+It listens on `127.0.0.1:4173` by default and refreshes every 180 seconds unless the project configuration overrides those values.
+
+## Installation
+
+Clone the repository, then copy or link the complete [`skills/gogoal`](skills/gogoal) directory into the skill search path exposed by your agent host:
 
 ```bash
 git clone https://github.com/hijustin/gogoal-skill.git
-# 将 gogoal-skill/skills/gogoal 复制或链接到宿主公开的 Skill 搜索目录
 ```
 
-GoGoal 不要求全局安装 Python 包。逻辑命令 `gogoal` 对应：
+Runtime requirements:
+
+- Python 3.12 or later.
+- Git is optional. Without usable Git worktree support, GoGoal safely executes one AI task at a time.
+- Chrome or Microsoft Edge is recommended for the local dashboard.
+- No global Python or Node package installation is required.
+
+The logical `gogoal` command used in documentation means:
 
 ```bash
-python3.12 <skill目录>/scripts/gogoal.py
+python3.12 <skill-directory>/scripts/gogoal.py
 ```
 
-如果希望在终端直接使用 `gogoal`，可以在自己的 PATH 中创建指向该脚本的包装命令；Skill 本身不修改用户环境。
-
-Windows 可使用：
+On Windows, use the available Python launcher when appropriate:
 
 ```powershell
-py -3.12 <skill目录>\scripts\gogoal.py --version
+py -3.12 <skill-directory>\scripts\gogoal.py --version
 ```
 
-## 快速开始
+## Quick start
+
+From the project you want to manage:
 
 ```bash
-python3.12 skills/gogoal/scripts/gogoal.py init --project "示例项目"
-python3.12 skills/gogoal/scripts/gogoal.py goal create \
-  --title "发布项目" \
-  --description "完成代码、文档和发布准备"
+python3.12 <skill-directory>/scripts/gogoal.py init \
+  --project "Example project" \
+  --locale en-US
+
+python3.12 <skill-directory>/scripts/gogoal.py goal create \
+  --title "Ship the project" \
+  --description "Complete implementation, documentation, and release readiness"
 ```
 
-创建目标后，AI 按 `gogoal/goal-writing.md` 编写 `gogoal/targets/1.md`，再执行：
+The primary AI then writes the returned goal document according to `gogoal/goal-writing.md`, validates it, and waits for explicit approval before starting the goal:
 
 ```bash
-python3.12 skills/gogoal/scripts/gogoal.py validate
-python3.12 skills/gogoal/scripts/gogoal.py goal start 1
-python3.12 skills/gogoal/scripts/gogoal.py dashboard serve --open
+python3.12 <skill-directory>/scripts/gogoal.py validate
+python3.12 <skill-directory>/scripts/gogoal.py goal start 1
+python3.12 <skill-directory>/scripts/gogoal.py dashboard serve --open
 ```
 
-CLI 的完整用法见 [命令参考](skills/gogoal/references/cli-reference.md)，工作流与权限边界见 [工作流](skills/gogoal/references/workflow.md)。
+See the [CLI reference](skills/gogoal/references/cli-reference.md), [workflow](skills/gogoal/references/workflow.md), and [document contract](skills/gogoal/references/document-contract.md) for the complete runtime behavior.
 
-无需创建数据也可以直接体验仓库内的只读示例：
+To explore a ready-made project without creating data:
 
 ```bash
 cd examples/demo-project
@@ -64,23 +116,43 @@ python3.12 ../../skills/gogoal/scripts/gogoal.py validate --strict
 python3.12 ../../skills/gogoal/scripts/gogoal.py dashboard serve --open
 ```
 
-## 安全边界
+## Project data
 
-- CLI 只修改当前项目的 `gogoal/` 数据，不直接修改业务实现文件。
-- CLI 永不创建 Git 提交、推送、Pull Request 或发布；`git.autoCommit` 只声明主 AI 是否可在完整动作后自行创建本地提交。
-- 看板默认只监听 `127.0.0.1`，也允许通过配置或命令显式覆盖监听地址且不增加二次确认；非本机监听应仅在可信网络中使用，所有写入仍必须通过 CLI。
-- 子代理只实现被派发任务，不得修改 GoGoal 管理数据或生命周期。
-- JSON、日志和文档不应保存密码、令牌、个人敏感信息或生产隐私数据。
+After initialization, GoGoal keeps all management data in one project-local directory:
 
-## 开发
+```text
+gogoal/
+├── config.json            # Project, locale, execution, Git, and dashboard settings
+├── goal-writing.md        # User-customizable goal-document writing guide
+├── task-writing.md        # User-customizable AI-task writing guide
+├── target.json            # Active goals
+├── target-archive.json    # Archived goals
+├── task.json              # Active AI and user tasks
+├── task-archive.json      # Archived AI and user tasks
+├── log.json               # Append-only management timeline
+├── targets/<id>.md        # Stable goal documents
+└── tasks/<id>.md          # Stable AI-task documents
+```
+
+## Safety boundaries
+
+- The CLI modifies only GoGoal management data under the selected project's `gogoal/` directory; it does not implement business changes itself.
+- The CLI never commits, pushes, opens pull requests, publishes, or rewrites remote history. `git.autoCommit` only controls whether the primary AI may create a scoped local commit after a complete action.
+- The dashboard is read-only. A non-loopback host should be configured only on a trusted network.
+- Sub-agents implement assigned work only. They must not mutate GoGoal lifecycle data or documents.
+- Do not store passwords, tokens, keys, sensitive personal information, or private production data in JSON, logs, or Markdown.
+
+## Development and contribution
+
+Architecture and design materials live under [`docs/`](docs); the retained dashboard experiment lives under [`prototypes/dashboard/`](prototypes/dashboard). Neither directory is loaded as Skill runtime context.
 
 ```bash
 /path/to/python3.12 -m unittest discover -s tests -v
 /path/to/python3.12 skills/gogoal/scripts/gogoal.py --version
 ```
 
-开发依据保留在 [`reference/`](reference)；它不是 Skill 运行时的一部分。
+Contributions are welcome through issues and pull requests. Please keep runtime instructions portable, structured-data mutations inside the CLI, and user-facing behavior consistent in both supported locales.
 
-## 许可证
+## License
 
-GoGoal 使用 [Apache License 2.0](LICENSE)。第三方组件说明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+GoGoal is licensed under the [Apache License 2.0](LICENSE). Third-party component notices are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

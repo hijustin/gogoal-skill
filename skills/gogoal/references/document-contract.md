@@ -1,53 +1,53 @@
-# GoGoal 文档核心契约
+# GoGoal Core Document Contract
 
-此契约高于项目写作指南。项目可以自定义章节、结构、篇幅、语气、表格和 Mermaid 使用方式，但不能删除本契约要求的语义。
+This contract overrides project writing guides. A project may customize sections, structure, length, tone, tables, and Mermaid usage, but it cannot remove the semantics required here.
 
-## 事实边界
+## Source-of-truth boundaries
 
-- Markdown 保存目标/任务边界、方案、计划、实际实施、验证、交付、评审与异常的详细上下文。
-- JSON 保存编号、标题、描述、状态、时间、关联和当前阻塞摘要。
-- `log.json` 保存业务管理动作；Git 保存实际文件差异。
-- 不在 Markdown 重复维护状态、登记时间、结束时间、归档时间或完整日志。
-- 不把 Markdown 章节或关键词当作状态机输入。
-- 不保存密码、密钥、令牌、个人敏感信息或生产隐私数据。
-- 文档内部只使用相对路径；不要写本机绝对路径。
+- Markdown stores detailed context for scope, approach, plans, actual implementation, validation, delivery, reviews, and exceptions.
+- JSON stores IDs, titles, descriptions, statuses, timestamps, associations, and current blocker summaries.
+- `log.json` stores business-management actions; Git stores actual file diffs.
+- Do not duplicate status, recorded time, end time, archive time, or a complete action log in Markdown.
+- Do not use Markdown sections or keywords as state-machine input.
+- Do not store passwords, keys, tokens, sensitive personal information, or private production data.
+- Use only relative paths inside documents; never record machine-specific absolute paths.
 
-规则优先级：平台安全与权限边界 > 本契约 > 用户当前明确要求 > 项目写作指南 > 默认写法。
+Rule priority: platform safety and permission boundaries > this contract > the user's current explicit request > project writing guides > default writing style.
 
-## 目标文档
+## Goal documents
 
-一级标题必须是 `# G-<id> <title>`。无论排版如何，文档都必须表达：
+The level-one heading must be `# G-<id> <title>`. Regardless of layout, every document must express:
 
-1. 目标背景、期望结果、范围、非目标、交付物和完成/验收要求。
-2. 已确认的整体实施方案、约束、影响、风险和权限边界。
-3. AI 任务、用户任务、依赖/顺序、执行结果及整体执行情况。
-4. 交付摘要、验证汇总、已知限制、待验收事项和最终验收结论。
-5. 用户对计划启动、验收修改、验收通过、取消和归档的生命周期评审。
+1. Goal background, intended outcome, scope, non-goals, deliverables, and completion or acceptance requirements.
+2. The confirmed overall approach, constraints, impact, risks, and permission boundaries.
+3. AI tasks, user tasks, dependencies or order, execution results, and overall progress.
+4. Delivery summary, validation summary, known limitations, acceptance items, and final acceptance result.
+5. User lifecycle reviews for plan start, requested acceptance changes, acceptance, cancellation, and archival.
 
-AI 任务使用 `[A-<id>](../tasks/<id>.md)`，用户任务使用 `U-<id>`。数据量大且字段统一时优先使用表格。目标未启动前不得遗留会改变实施边界、交付物或验收要求的未决事项。
+Link AI tasks as `[A-<id>](../tasks/<id>.md)` and refer to user tasks as `U-<id>`. Prefer tables when many items share the same fields. Before starting a goal, resolve every open item that could change the implementation boundary, deliverables, or acceptance requirements.
 
-## AI 任务文档
+## AI task documents
 
-一级标题必须是 `# A-<id> <title>`，并链接 `> 关联目标：[G-<goalId>](../targets/<goalId>.md)`。文档必须表达：
+The level-one heading must be `# A-<id> <title>` and must link `> Related goal: [G-<goalId>](../targets/<goalId>.md)`. Regardless of layout, every document must express:
 
-1. 预期结果、范围、非目标和依赖。
-2. 可执行计划、影响检查、风险/恢复方式、完成条件和验证计划。
-3. 实际改动和重要计划偏差。
-4. 实际验证、客观结果、结论及未执行项与原因。
-5. 最终交付、使用或合入方式、已知限制、分支/工作树清理结果。
-6. 阻塞、恢复或取消的原因、措施、条件和处置。
+1. Intended result, scope, non-goals, and dependencies.
+2. Executable plan, impact checks, risks and recovery, completion conditions, and validation plan.
+3. Actual changes and meaningful deviations from the plan.
+4. Validation performed, objective results, conclusions, and any omitted checks with reasons.
+5. Final delivery, usage or integration path, known limitations, and branch/worktree cleanup result.
+6. Causes, measures, conditions, and disposition for any block, recovery, or cancellation.
 
-计划不得事后改写成结果；验证不要粘贴完整终端日志；交付不要逐项复制实施过程。简单任务保持紧凑，可以增加必要内部小节，但不为模板制造空内容。
+Do not rewrite a plan after the fact to resemble the result. Do not paste complete terminal logs into validation sections. Do not repeat the entire implementation history in delivery. Keep simple tasks compact; add internal subsections only when useful, never to manufacture empty template content.
 
-不要求记录包含任务完成文档本身的提交 SHA，因为该提交在写文档时尚不存在，回写又会产生新的提交。已经存在的独立实现提交、合入提交或 PR 可以按需记录。
+Do not require the SHA of the commit containing the completed task document itself: that commit does not exist when the document is written, and writing it back would create yet another commit. Record already existing, independent implementation commits, integration commits, or pull requests only when useful.
 
-## 生命周期同步
+## Lifecycle synchronization
 
-- 创建：CLI 分配编号后立即创建对应 Markdown，再运行 `validate`。
-- 改标题：先用 CLI 更新 JSON，再同步一级标题，路径不变。
-- 启动：先补全文档和用户计划批准记录，再执行启动命令。
-- 阻塞/恢复/取消：先写异常或整体执行记录，再执行命令。
-- 任务完成：先整合、验证并填写实施/验证/交付结果，再完成任务。
-- 提交验收：先补全目标交付与验收，再 `goal submit`。
-- 验收修改/通过、取消、归档：先追加对应用户评审，再流转。
-- 已终态文档不得重写历史事实；事实修正需明确标记并由 Git 留痕。
+- Create: immediately create the corresponding Markdown after the CLI allocates an ID, then run `validate`.
+- Rename: update JSON through the CLI, then synchronize the level-one heading without changing the path.
+- Start: complete the document and record the user's plan approval before running the start command.
+- Block, resume, or cancel: write the exception or execution record before running the command.
+- Complete a task: integrate, validate, and record implementation, validation, and delivery before completing it.
+- Submit for acceptance: complete goal delivery and acceptance material before `goal submit`.
+- Revise, accept, cancel, or archive: append the corresponding user review before transitioning.
+- Do not rewrite historical facts in a terminal document. Mark corrections explicitly and retain them in Git history.

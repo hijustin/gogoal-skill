@@ -1,6 +1,6 @@
 # GoGoal 看板页面原型
 
-这是根据 `reference/` 中的 `page.md`、`design.md` 和 `blueprint.md` 实现的单页面交互原型，用于验证 GoGoal 目标任务看板的信息架构与视觉方向。
+这是根据 [`docs/design/page.md`](../../docs/design/page.md)、[`docs/design/design.md`](../../docs/design/design.md) 和 [`docs/architecture/blueprint.md`](../../docs/architecture/blueprint.md) 实现的单页面交互原型，用于验证 GoGoal 目标任务看板的信息架构与视觉方向。
 
 ## 已实现内容
 

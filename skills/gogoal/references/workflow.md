@@ -1,12 +1,12 @@
-# GoGoal 工作流
+# GoGoal Workflow
 
-## 角色与授权
+## Roles and authorization
 
-用户负责批准目标启动、提供外部依赖和决定、验收目标、要求取消或归档。主 AI 负责目标分析、任务拆分、调度、执行审查、全部生命周期命令、文档一致性与验收提交。子代理只负责被派发 AI 任务的候选实现和任务级验证。
+The user approves goal start, provides external dependencies and decisions, accepts goals, and requests cancellation or archival. The primary AI owns goal analysis, task decomposition, scheduling, implementation review, every lifecycle command, document consistency, and acceptance submission. A sub-agent only produces a candidate implementation and task-level validation for its assigned AI task.
 
-子代理不得调用 GoGoal 修改命令，不得修改四个状态 JSON、`log.json`、目标/任务 Markdown 或写作指南。子代理的“完成”仅代表候选结果就绪；主 AI 审查、整合并完成必要验证后才能执行 `task complete`。
+A sub-agent must not run GoGoal mutation commands or edit the four state JSON files, `log.json`, goal/task Markdown, or writing guides. A sub-agent reporting “complete” means only that a candidate result is ready. The primary AI may run `task complete` only after reviewing and integrating it and completing the required validation.
 
-## 目标流转
+## Goal lifecycle
 
 ```text
 pending -> active -> review -> completed
@@ -18,16 +18,16 @@ pending/active/blocked/review -> cancelled
 completed/cancelled -> archived storage
 ```
 
-- 创建目标后先完成定义、方案、任务规划和待确认事项。
-- 用户明确批准当前计划后，追加“计划启动”评审，再启动目标。
-- 目标阻塞前，关联 `active` AI 任务必须先完成或阻塞；仍有可执行路径时不得阻塞整个目标。
-- 所有关联任务终态、结果和验证完整后才能提交待验收。
-- 用户提出范围内修改时记录评审并恢复为 `active`；范围外工作应新建目标。
-- 只有用户明确验收通过后才完成目标，只有用户指定后才归档。
+- After creating a goal, complete its definition, approach, task plan, and items needing confirmation.
+- After the user explicitly approves the current plan, append the plan-start review and then start the goal.
+- Before blocking a goal, complete or block every associated `active` AI task. Do not block the whole goal while an executable path remains.
+- Submit for review only when all associated tasks are terminal and results and validation are complete.
+- When the user requests an in-scope review change, record the review and return the goal to `active`. Out-of-scope work requires a new goal.
+- Complete a goal only after explicit user acceptance, and archive it only when the user asks.
 
-## 任务流转
+## Task lifecycle
 
-AI 任务：
+AI tasks:
 
 ```text
 pending -> active -> completed
@@ -38,22 +38,22 @@ pending -> active -> completed
 pending/active/blocked -> cancelled
 ```
 
-用户任务只允许 `pending -> completed/cancelled`。用户任务类型为 `dependency`、`decision` 或 `other`，只表达必须由用户提供、选择、确认或处理的内容。
+User tasks allow only `pending -> completed/cancelled`. Their kind is `dependency`, `decision`, or `other`, and they represent something the user must provide, select, confirm, or handle.
 
-AI 任务启动前必须具备明确边界、实施计划、完成条件和验证计划。主 AI 还必须确认前置 AI 任务、用户依赖、共享资源和所需权限均已就绪；当前数据模型没有结构化依赖字段，CLI 不解析 Markdown，因此这一语义门槛由主 AI 负责。阻塞必须说明原因、已尝试措施和解除条件；条件满足后先更新文档再恢复。完成前必须把结果整合到预定位置并执行所需验证。
+Before starting an AI task, ensure it has a clear boundary, execution plan, completion conditions, and validation plan. The primary AI must also determine that prerequisite AI tasks, user dependencies, shared resources, and required permissions are ready. The current data model has no structured dependency field and the CLI does not parse Markdown, so this semantic gate belongs to the primary AI. A blocker must state its cause, attempted measures, and release condition. After the condition is met, update the document before resuming. Before completion, integrate the result into its intended location and run all required validation.
 
-创建目标或 AI 任务以及修改标题时，CLI 先维护结构化事实，主 AI 随后立即创建或同步稳定编号 Markdown 并运行 `validate`。在这段短暂不一致恢复前，不继续执行其他目标或任务修改命令。
+When creating a goal or AI task or changing a title, the CLI updates structured facts first. The primary AI must immediately create or synchronize the stable-ID Markdown file and run `validate`. Do not run another goal or task mutation during this brief consistency-restoration interval.
 
-## 并行调度
+## Parallel scheduling
 
-`execution.maxParallelTasks` 是允许的最大活跃 AI 任务数，不要求使用子代理。主 AI 按依赖、文件重叠、验证成本和冲突风险选择顺序、工作树、子代理或混合执行。
+`execution.maxParallelTasks` is the maximum number of active AI tasks; it never requires using sub-agents. The primary AI chooses sequential work, worktrees, sub-agents, or a mixture based on dependencies, file overlap, validation cost, and conflict risk.
 
-只有 `active` AI 任务占容量，`blocked` 不占。恢复任务允许非抢占式临时超额；超额时不再启动新任务。Git 不可用、不是仓库、`git.enabled=false` 或缺少可用的 Git 工作树隔离能力时有效上限固定为一。
+Only `active` AI tasks consume capacity; `blocked` tasks do not. Resuming a task may create a temporary non-preemptive excess, but no new task may start while over capacity. The effective limit is exactly one when Git is unavailable, the project is not a repository, `git.enabled=false`, or usable Git worktree isolation is missing.
 
-## 完成与异常
+## Completion and failures
 
-Git 可用且启用时，AI 任务完成门槛是结果已经进入预定目标分支并在组合状态下通过必要验证。Git 不可用或关闭时，结果必须进入当前工作目录并验证通过。
+When Git is available and enabled, an AI task is complete only after its result is integrated into the intended target branch and required validation passes against the combined state. When Git is unavailable or disabled, the result must be present in the current project directory and pass required validation there.
 
-冲突或测试失败时：保留候选分支/工作树，任务保持 `active`；能在任务边界修复则继续，无法推进则记录异常并阻塞。不得把未整合或验证失败的候选实现标为完成。
+On conflicts or test failures, retain the candidate branch/worktree and keep the task `active`. Continue when the issue can be resolved within the task boundary; otherwise record the exception and block the task. Never mark an unintegrated or failing candidate implementation complete.
 
-管理数据不一致时先停止流转，运行 `validate`，依据结构化当前事实用 CLI 恢复；不要手工拼接 `log.json`，也不要用整组 `ours`/`theirs` 覆盖管理文件。
+When management data is inconsistent, stop lifecycle changes, run `validate`, and restore consistency through the CLI from the structured current facts. Do not hand-splice `log.json` and do not replace a whole management file using `ours` or `theirs`.
