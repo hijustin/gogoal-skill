@@ -345,6 +345,10 @@ def validate_state(
         if entry.get("action") == "create" and before is not None:
             errors.append(f"{label} create 的 statusFrom 必须为 null")
         previous = chains.get(identity)
+        if identity not in chains and entry.get("action") != "create":
+            errors.append(f"{label} 是对象首条日志但动作不是 create")
+        elif identity in chains and entry.get("action") == "create":
+            errors.append(f"{label} 对同一对象重复记录 create")
         if identity in chains and before != previous:
             errors.append(f"{label} 状态链与上一条日志不连续")
         chains[identity] = after

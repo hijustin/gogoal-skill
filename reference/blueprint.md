@@ -331,7 +331,7 @@ AI 任务的前置任务、用户依赖和共享资源条件属于 Markdown 中�
 ### 6.1 项目初始化
 
 1. 用户明确要求初始化 GoGoal 或登记第一个目标。
-2. Skill 检查项目根目录是否已有 `gogoal/config.json`。
+2. Skill 检查项目根目录是否已有 `gogoal/config.json`；启用 Git 集成时，默认将 Git 仓库根目录作为项目根目录。
 3. 未初始化时调用 `gogoal init` 创建配置、四个空状态 JSON、空日志、详情目录以及当前语言的两份默认写作指南。
 4. 执行 `gogoal validate` 确认初始化结果。
 5. 初始化本身不自动创建目标。
@@ -1542,7 +1542,7 @@ http://127.0.0.1:4173
 - 拒绝路径穿越和任意文件读取。
 - Markdown 渲染必须执行 HTML 安全过滤。
 - API 不返回敏感环境变量或 Git 凭据。
-- 监听非本机地址应要求用户明确配置和确认。
+- 监听地址可以通过 `dashboard.host` 或 `--host` 显式覆盖；非本机地址不增加二次确认，使用者负责确保所在网络环境可信。
 
 ### 16.5 页面原型定稿要求
 
@@ -1692,13 +1692,13 @@ gogoal-skill/
 | `assets/writing/en-US/` | 保存初始化时复制到项目的英文目标与任务默认写作指南。 |
 | `assets/dashboard/` | 保存固定的只读看板前端资源及本地化后的第三方前端依赖，不从 CDN 加载。 |
 
-当前仓库 `reference/work-management-spec.md` 只是创建 GoGoal 的外部实践参考，不原样复制进 Skill。应提取其中已经验证有效的经验，融合为新的 `SKILL.md` 和 `references/` 内容。`reference/prototype/` 同样只用于定稿设计和开发验证，正式前端资源需整理后进入 `skills/gogoal/assets/dashboard/`。
+`reference/prototype/` 只用于定稿设计和开发验证，正式前端资源需整理后进入 `skills/gogoal/assets/dashboard/`。
 
 ### 17.3 Skill 外部文件职责
 
 | 文件或目录 | 作用 |
 | --- | --- |
-| `reference/` | 保存开发蓝图、页面设计输入、原始实践参考和定稿原型；这些材料用于开发追溯，不作为 Skill 运行时上下文。 |
+| `reference/` | 保存开发蓝图、页面设计输入和定稿原型；这些材料用于开发追溯，不作为 Skill 运行时上下文。 |
 | `tests/` | 测试存储、状态迁移、日志、校验、CLI 和看板服务。 |
 | `examples/demo-project/` | 提供可直接体验的示例目标任务数据。 |
 | `.github/workflows/ci.yml` | 在提交和 PR 中执行 Skill 校验和自动测试。 |

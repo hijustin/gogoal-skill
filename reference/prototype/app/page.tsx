@@ -118,7 +118,7 @@ const messages = {
     clearSearch: "清空搜索",
     syncing: "正在同步…",
     dataUpdated: "数据已更新",
-    autoRefresh: "自动 60s",
+    autoRefresh: "自动 180s",
     refreshData: "刷新数据",
     manualRefresh: "手动刷新",
     switchTheme: "切换主题",
@@ -401,7 +401,6 @@ export default function Home() {
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
-    timeZone: "Asia/Shanghai",
   }).format(now);
 
   const modalGoal = modal?.kind === "goal" ? goals.find((item) => item.id === modal.id) : null;
@@ -434,7 +433,7 @@ export default function Home() {
         </div>
 
         <div className="toolbar-meta">
-          <span><b suppressHydrationWarning>{currentTime}</b><small>Asia/Shanghai</small></span>
+          <span><b suppressHydrationWarning>{currentTime}</b></span>
           <span><b>{refreshing ? ui.syncing : ui.dataUpdated}</b><small suppressHydrationWarning>{updatedAt.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })} · {ui.autoRefresh}</small></span>
           <button className={`icon-button ${refreshing ? "spinning" : ""}`} onClick={refresh} aria-label={ui.refreshData} title={ui.manualRefresh}>↻</button>
           <button className="icon-button" onClick={() => setTheme((current) => current === "light" ? "dark" : "light")} aria-label={ui.switchTheme} title={ui.themeTip}>{theme === "light" ? "☼" : "☾"}</button>

@@ -68,6 +68,12 @@ class SkillStructureTestCase(unittest.TestCase):
                 self.assertTrue((SKILL / "assets" / "writing" / locale / name).is_file())
         self.assertTrue((SKILL / "scripts" / "gogoal.py").is_file())
 
+    def test_prototype_uses_device_time_and_current_refresh_interval(self) -> None:
+        source = (ROOT / "reference" / "prototype" / "app" / "page.tsx").read_text(encoding="utf-8")
+        self.assertNotIn("Asia/Shanghai", source)
+        self.assertNotIn("自动 60s", source)
+        self.assertIn("自动 180s", source)
+
 
 if __name__ == "__main__":
     unittest.main()

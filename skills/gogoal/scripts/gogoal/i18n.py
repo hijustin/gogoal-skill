@@ -12,6 +12,7 @@ UI = {
     "zh-CN": {
         "cli_description": "目标与任务管理 Skill CLI",
         "json": "输出稳定 JSON",
+        "positive_integer": "必须是正整数",
         "task_type": "任务类型",
         "project_root": "显式指定项目根目录",
         "init": "初始化项目数据目录",
@@ -39,6 +40,7 @@ UI = {
     "en-US": {
         "cli_description": "Goal and task management Skill CLI",
         "json": "Output stable JSON",
+        "positive_integer": "must be a positive integer",
         "task_type": "Task type",
         "project_root": "Explicit project root",
         "init": "Initialize project data",
@@ -127,6 +129,19 @@ EXACT_EN = {
     "看板端口必须是 1 到 65535 的整数。": "Dashboard port must be an integer from 1 to 65535.",
     "Skill 缺少看板前端资源。": "The Skill is missing dashboard assets.",
     "标题必须是单行文本。": "The title must be a single line.",
+    "locale 只允许 zh-CN 或 en-US。": "locale must be zh-CN or en-US.",
+    "不兼容的数据格式：仅支持 format=1，拒绝修改。": "Incompatible data format: only format=1 is supported; refusing to modify data.",
+}
+
+ERROR_LABELS_EN = {
+    "项目名称": "Project name",
+    "标题": "Title",
+    "描述": "Description",
+    "阻塞原因": "Blocker reason",
+    "解除条件": "Recovery condition",
+    "验收修改摘要": "Review revision note",
+    "取消原因": "Cancellation reason",
+    "用户任务结果": "User task result",
 }
 
 PATTERNS_EN: tuple[tuple[re.Pattern[str], str], ...] = (
@@ -199,6 +214,8 @@ VALIDATION_PHRASES_EN = (
     ("时间或标题非法", "has an invalid time or title"),
     ("引用了不存在或关联错误的对象", "references a missing or incorrectly related object"),
     ("状态链与上一条日志不连续", "status chain is not continuous with the previous log"),
+    ("是对象首条日志但动作不是 create", "is the object's first log but its action is not create"),
+    ("对同一对象重复记录 create", "repeats create for the same object"),
     ("create 的 statusFrom 必须为 null", "statusFrom must be null for create"),
     ("必须为 null 或非空字符串", "must be null or a non-empty string"),
     ("缺少管理日志", "is missing a management log"),
@@ -255,6 +272,15 @@ def translate(text: str, locale: str) -> str:
         return text
     if text in EXACT_EN:
         return EXACT_EN[text]
+    for label, translated in ERROR_LABELS_EN.items():
+        dynamic_errors = {
+            f"{label}不能为空。": f"{translated} must not be empty.",
+            f"{label}必须是单行文本且不能包含控制字符。": f"{translated} must be a single line without control characters.",
+            f"{label}不能包含控制字符。": f"{translated} must not contain control characters.",
+            f"{label}疑似包含敏感凭据，拒绝写入管理数据。": f"{translated} may contain sensitive credentials; refusing to write management data.",
+        }
+        if text in dynamic_errors:
+            return dynamic_errors[text]
     for pattern, replacement in PATTERNS_EN:
         if pattern.fullmatch(text):
             return pattern.sub(replacement, text)

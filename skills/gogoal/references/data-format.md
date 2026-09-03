@@ -50,7 +50,7 @@ gogoal/
 - `git.autoCommit`：允许主 AI 在完整动作或已验证实现后自主创建范围明确的本地提交；CLI 永不提交。
 - `git.branchPrefix`：任务分支前缀；保存时规范化为以 `/` 结尾。
 - `git.worktreeRoot`：任务工作树根目录，必须位于主仓库之外。
-- `dashboard.host`、`port`：只读 HTTP 服务监听地址和端口。
+- `dashboard.host`、`port`：只读 HTTP 服务监听地址和端口；默认只监听本机，显式改为非本机地址时不增加二次确认。
 - `dashboard.refreshSeconds`：页面重新读取数据的间隔，至少一秒。
 - `dashboard.autoOpen`：启动服务后是否尝试打开浏览器。
 - `dashboard.gitActivity`：Git 集成有效时是否补充符合 GoGoal 提交格式的历史。

@@ -238,6 +238,20 @@ class ServiceTestCase(unittest.TestCase):
         self.assertTrue(any("blocker.reason 疑似包含敏感凭据" in item for item in result["errors"]))
         self.assertTrue(any("blocker.condition 必须是无控制字符的单行文本" in item for item in result["errors"]))
 
+    def test_validation_requires_create_as_first_object_log(self) -> None:
+        goal = self.service.goal_create("日志起点", "验证创建日志不可缺失")["record"]
+        self.write_goal(goal["id"], goal["title"])
+        self.service.goal_start(goal["id"])
+        log_path = self.root / "gogoal" / "log.json"
+        payload = json.loads(log_path.read_text(encoding="utf-8"))
+        payload["logs"] = payload["logs"][1:]
+        payload["logs"][0]["id"] = 1
+        log_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+        result = self.service.validate()
+        self.assertFalse(result["valid"])
+        self.assertTrue(any("首条日志" in item and "create" in item for item in result["errors"]))
+
     def test_validation_rejects_unknown_fields_invalid_times_and_action_mismatch(self) -> None:
         goal = self.service.goal_create("严格结构", "拒绝结构漂移")["record"]
         self.write_goal(goal["id"], goal["title"])
@@ -500,6 +514,13 @@ class CliIntegrationTestCase(unittest.TestCase):
         self.assertEqual(initialized["message"], "GoGoal project initialized.")
         help_result = self.cli("--help")
         self.assertIn("Goal and task management Skill CLI", help_result.stdout)
+
+        invalid_id = self.cli("task", "list", "--goal", "0", expected=2)
+        self.assertIn("must be a positive integer", invalid_id.stderr)
+        empty_title = self.cli("goal", "create", "--title", "", "--description", "Example", expected=2)
+        self.assertIn("Title must not be empty.", empty_title.stderr)
+        sensitive = self.cli("goal", "create", "--title", "Example", "--description", "api_token=do-not-store", expected=2)
+        self.assertIn("Description may contain sensitive credentials", sensitive.stderr)
 
         goal = self.cli("goal", "create", "--title", "Release Skill", "--description", "Complete release", json_output=True)["record"]
         self.write_goal(goal["id"], goal["title"])
