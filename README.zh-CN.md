@@ -51,6 +51,8 @@ JSON 负责紧凑的生命周期事实；Markdown 负责背景、方案、计划
 
 看板通过本地 HTTP 服务动态读取项目数据，统一展示目标、AI 任务、用户任务、状态列、关联活动、悬浮详情和长篇 Markdown，不会把数据写进页面或重复生成页面。
 
+![GoGoal 中文看板，展示目标、AI 任务、用户任务和管理时间线](docs/assets/gogoal-dashboard-zh-CN.jpg)
+
 ```bash
 python3.12 <skill目录>/scripts/gogoal.py dashboard serve --open
 ```

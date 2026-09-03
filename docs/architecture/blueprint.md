@@ -1635,7 +1635,9 @@ gogoal-skill/
 │   │       ├── cli-reference.md
 │   │       └── git-workflow.md
 │   └── assets/
-│       └── gogoal-hero.png
+│       ├── gogoal-hero.png
+│       ├── gogoal-dashboard-en-US.jpg
+│       └── gogoal-dashboard-zh-CN.jpg
 ├── prototypes/
 │   └── dashboard/
 ├── skills/

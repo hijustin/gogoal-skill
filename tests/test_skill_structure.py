@@ -78,6 +78,8 @@ class SkillStructureTestCase(unittest.TestCase):
         self.assertTrue((ROOT / "docs" / "design" / "page.md").is_file())
         self.assertTrue((ROOT / "docs" / "design" / "design.md").is_file())
         self.assertTrue((ROOT / "docs" / "assets" / "gogoal-hero.png").is_file())
+        self.assertTrue((ROOT / "docs" / "assets" / "gogoal-dashboard-en-US.jpg").is_file())
+        self.assertTrue((ROOT / "docs" / "assets" / "gogoal-dashboard-zh-CN.jpg").is_file())
         self.assertTrue((ROOT / "README.zh-CN.md").is_file())
         self.assertFalse((ROOT / "reference").exists())
 

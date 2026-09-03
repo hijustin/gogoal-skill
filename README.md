@@ -51,6 +51,8 @@ JSON owns compact lifecycle facts. Markdown owns reasoning, plans, implementatio
 
 The dashboard reads live project data through a local HTTP service. It shows goals, AI tasks, user tasks, status columns, related activity, hover details, and long-form Markdown without rewriting or embedding project data.
 
+![GoGoal dashboard in English with goals, AI tasks, user tasks, and a management timeline](docs/assets/gogoal-dashboard-en-US.jpg)
+
 ```bash
 python3.12 <skill-directory>/scripts/gogoal.py dashboard serve --open
 ```
