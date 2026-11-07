@@ -144,17 +144,6 @@ gogoal/
 - 子代理只实施被派发的任务，不得修改 GoGoal 生命周期数据或文档。
 - JSON、日志和 Markdown 中不得保存密码、令牌、密钥、个人敏感信息或生产隐私数据。
 
-## 开发与贡献
-
-架构和设计材料位于 [`docs/`](docs)，保留的看板实验原型位于 [`prototypes/dashboard/`](prototypes/dashboard)；两者都不会作为 Skill 运行时上下文加载。
-
-```bash
-/path/to/python3.12 -m unittest discover -s tests -v
-/path/to/python3.12 skills/gogoal/scripts/gogoal.py --version
-```
-
-欢迎通过 Issues 和 Pull Requests 参与贡献。请保持运行时说明可移植、结构化数据变更集中在 CLI 内，并确保所有用户界面行为同时适配中英文。
-
 ## 许可证
 
 GoGoal 使用 [Apache License 2.0](LICENSE)。第三方组件说明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

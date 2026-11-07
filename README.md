@@ -144,17 +144,6 @@ gogoal/
 - Sub-agents implement assigned work only. They must not mutate GoGoal lifecycle data or documents.
 - Do not store passwords, tokens, keys, sensitive personal information, or private production data in JSON, logs, or Markdown.
 
-## Development and contribution
-
-Architecture and design materials live under [`docs/`](docs); the retained dashboard experiment lives under [`prototypes/dashboard/`](prototypes/dashboard). Neither directory is loaded as Skill runtime context.
-
-```bash
-/path/to/python3.12 -m unittest discover -s tests -v
-/path/to/python3.12 skills/gogoal/scripts/gogoal.py --version
-```
-
-Contributions are welcome through issues and pull requests. Please keep runtime instructions portable, structured-data mutations inside the CLI, and user-facing behavior consistent in both supported locales.
-
 ## License
 
 GoGoal is licensed under the [Apache License 2.0](LICENSE). Third-party component notices are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
